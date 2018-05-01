@@ -1,11 +1,11 @@
 package hudson.plugins.plot
 
 import hudson.FilePath
-import java.io.File
-import java.util.HashMap
 import org.junit.After
 import org.junit.Before
 import org.junit.Ignore
+import java.io.File
+import java.util.*
 
 /**
  * Test an XML series.
@@ -56,7 +56,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
         testPlotPoints(points, 4)
     }
 
-    fun testXMLSeries_WhenNodesHaveNoContent_ThenCoalesceForAttributes() {
+    fun testXMLSeries_NODE_TO_STRING_WhenNodesHaveNoContent_ThenCoalesceForAttributes() {
         // Create a new XML series.
         val xpath = "//testcase[@name='testOne'] | //testcase[@name='testTwo'] | //testcase[@name='testThree']"
 
@@ -130,7 +130,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
         testPlotPoints(points, 0)
     }
 
-    fun testXMLSeriesNode() {
+    fun testXMLSeriesNode_ADD_NODE_TO_LIST() { //USE THIS
         // Create a new XML series.
         val xpath = "//testcase[@name='testThree']"
         val series = XMLSeries(TEST_XML_FILE, xpath, "NODE", null)

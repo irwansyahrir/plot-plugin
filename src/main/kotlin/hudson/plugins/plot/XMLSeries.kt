@@ -8,19 +8,6 @@ package hudson.plugins.plot
 import hudson.Extension
 import hudson.FilePath
 import hudson.model.Descriptor
-import java.io.InputStream
-import java.io.PrintStream
-import java.util.ArrayDeque
-import java.util.ArrayList
-import java.util.Collections
-import java.util.HashMap
-import java.util.Scanner
-import java.util.logging.Level
-import java.util.logging.Logger
-import javax.xml.namespace.QName
-import javax.xml.xpath.XPathConstants
-import javax.xml.xpath.XPathExpressionException
-import javax.xml.xpath.XPathFactory
 import net.sf.json.JSONObject
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.ArrayUtils
@@ -29,6 +16,15 @@ import org.kohsuke.stapler.StaplerRequest
 import org.w3c.dom.Node
 import org.w3c.dom.NodeList
 import org.xml.sax.InputSource
+import java.io.InputStream
+import java.io.PrintStream
+import java.util.*
+import java.util.logging.Level
+import java.util.logging.Logger
+import javax.xml.namespace.QName
+import javax.xml.xpath.XPathConstants
+import javax.xml.xpath.XPathExpressionException
+import javax.xml.xpath.XPathFactory
 
 /**
  * Represents a plot data series configuration from an XML file.
@@ -46,9 +42,7 @@ class XMLSeries : Series {
         @Transient
         private val Q_NAME_MAP: Map<String, QName>
 
-        /*
-      Fill out the qName map for easy reference.
-     */
+        //Fill out the qName map for easy reference.
         init {
             val tempMap = HashMap<String, QName>()
             tempMap["BOOLEAN"] = XPathConstants.BOOLEAN
@@ -68,7 +62,7 @@ class XMLSeries : Series {
     /**
      * Url to use as a base for mapping points.
      */
-    private val url: String?
+    private val baseUrl: String?
 
     /**
      * String of the qname type to use
@@ -86,7 +80,7 @@ class XMLSeries : Series {
         this.xpathString = xpath
         this.nodeTypeString = nodeType
         this.nodeType = Q_NAME_MAP[nodeType]
-        this.url = url
+        this.baseUrl = url
     }
 
     private fun readResolve(): Any {
@@ -262,15 +256,13 @@ class XMLSeries : Series {
         return null
     }
 
-    private fun addNodeToList(ret: MutableList<PlotPoint>, n: Node, buildNumber: Int) {
-        val nodeMap = n.attributes
+    private fun addNodeToList(returnList: MutableList<PlotPoint>, node: Node, buildNumber: Int) {
+        val nodeMap = node.attributes
 
-        if (null != nodeMap && null != nodeMap.getNamedItem("name")) {
-            addValueToList(ret, nodeMap.getNamedItem("name").textContent.trim { it <= ' ' },
-                    n, buildNumber)
-        } else {
-            addValueToList(ret, n.localName.trim { it <= ' ' }, n, buildNumber)
-        }
+        val namedItem = nodeMap?.getNamedItem("name")
+        val label: String = namedItem?.textContent?.trim() ?: node.localName.trim()
+
+        addValueToList(returnList, label, node, buildNumber)
     }
 
     /**
@@ -280,67 +272,60 @@ class XMLSeries : Series {
      * @return String representation of the node
      */
     private fun nodeToString(obj: Any?): String? {
-        var ret: String? = null
-
         if (nodeType === XPathConstants.BOOLEAN) {
             return if (obj as Boolean) "1" else "0"
         }
 
         if (nodeType === XPathConstants.NUMBER) {
-            return (obj as Double).toString().trim { it <= ' ' }
+            return (obj as Double).toString().trim()
         }
 
         if (nodeType === XPathConstants.NODE || nodeType === XPathConstants.NODESET) {
-            if (obj is String) {
-                ret = obj.trim { it <= ' ' }
-            } else {
-                if (null == obj) {
-                    return null
-                }
-
-                val node = obj as Node?
-                val nodeMap = node!!.attributes
-
-                if (null != nodeMap && null != nodeMap.getNamedItem("time")) {
-                    ret = nodeMap.getNamedItem("time").textContent
-                }
-
-                if (null == ret) {
-                    ret = node.textContent.trim { it <= ' ' }
+            return when (obj) {
+                is String -> parseAsDouble(obj.trim())
+                else -> {
+                    val node = obj as Node
+                    val namedItem = node.attributes?.getNamedItem("time")
+                    parseAsDouble(namedItem?.textContent?.trim() ?: node.textContent.trim())
                 }
             }
         }
 
         if (nodeType === XPathConstants.STRING) {
-            ret = (obj as String).trim { it <= ' ' }
+            return parseAsDouble((obj as String).trim())
         }
 
+        return null
+    }
+
+    private fun parseAsDouble(nodeString: String): String? {
         // for Node/String/NodeSet, try and parse it as a double.
         // we don't store a double, so just throw away the result.
-        val scanner = Scanner(ret!!)
-        return if (scanner.hasNextDouble()) {
-            scanner.nextDouble().toString()
-        } else null
+        val scanner = Scanner(nodeString)
+        return when {
+            scanner.hasNextDouble() -> scanner.nextDouble().toString()
+            else -> null
+        }
     }
 
     /**
-     * Add a given value to the list of results. This encapsulates some
+     * Add a given value to the plotPoints of results. This encapsulates some
      * otherwise duplicate logic due to nodeset/!nodeset
      */
-    private fun addValueToList(list: MutableList<PlotPoint>, label: String,
+    private fun addValueToList(plotPoints: MutableList<PlotPoint>, label: String,
                                nodeValue: Any, buildNumber: Int) {
+
         val value = nodeToString(nodeValue)
 
         if (value != null) {
             if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
                 LOGGER.log(DEFAULT_LOG_LEVEL, "Adding node: $label value: $value")
             }
-            list.add(PlotPoint(value, getUrl(url, label, 0, buildNumber),
-                    label))
+            val pointUrl = getUrl(baseUrl, label, 0, buildNumber)
+            plotPoints.add(PlotPoint(value, pointUrl, label))
         } else {
             if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                LOGGER.log(DEFAULT_LOG_LEVEL, "Unable to add node: " + label
-                        + " value: " + nodeValue)
+                LOGGER.log(DEFAULT_LOG_LEVEL, "Unable to add node: $label value: $nodeValue")
             }
         }
     }

@@ -1,0 +1,352 @@
+//package hudson.plugins.plot
+//
+//import hudson.Extension
+//import hudson.FilePath
+//import hudson.model.Descriptor
+//import java.io.InputStream
+//import java.io.PrintStream
+//import java.util.ArrayDeque
+//import java.util.ArrayList
+//import java.util.Collections
+//import java.util.HashMap
+//import java.util.Scanner
+//import java.util.logging.Level
+//import java.util.logging.Logger
+//import javax.xml.namespace.QName
+//import javax.xml.xpath.XPathConstants
+//import javax.xml.xpath.XPathExpressionException
+//import javax.xml.xpath.XPathFactory
+//import net.sf.json.JSONObject
+//import org.apache.commons.io.IOUtils
+//import org.apache.commons.lang.ArrayUtils
+//import org.kohsuke.stapler.DataBoundConstructor
+//import org.kohsuke.stapler.StaplerRequest
+//import org.w3c.dom.Node
+//import org.w3c.dom.NodeList
+//import org.xml.sax.InputSource
+//
+///**
+// * Represents a plot data series configuration from an XML file.
+// *
+// * @author Allen Reese
+// */
+//class XMLSeries @DataBoundConstructor
+//constructor(file: String,
+//            /**
+//             * XPath to select for values
+//             */
+//            val xpath: String,
+//            /**
+//             * String of the qname type to use
+//             */
+//            private val nodeTypeString: String,
+//            /**
+//             * Url to use as a base for mapping points.
+//             */
+//            val url: String) : Series(file, "", "xml") {
+//
+//    /**
+//     * Actual nodeType
+//     */
+//    @Transient
+//    private var nodeType: QName? = null
+//
+//    init {
+//        this.nodeType = Q_NAME_MAP[nodeTypeString]
+//    }
+//
+//    private fun readResolve(): Any {
+//        // Set nodeType when deserialized
+//        nodeType = Q_NAME_MAP[nodeTypeString]
+//        return this
+//    }
+//
+//    fun getNodeType(): String {
+//        return nodeTypeString
+//    }
+//
+//    /**
+//     * @param buildNumber the build number
+//     * @return a List of PlotPoints where the label is the element name and the
+//     * value is the node content.
+//     */
+//    private fun mapNodeNameAsLabelTextContentAsValueStrategy(nodeList: NodeList,
+//                                                             buildNumber: Int): List<PlotPoint> {
+//        val retval = ArrayList<PlotPoint>()
+//        for (i in 0 until nodeList.length) {
+//            this.addNodeToList(retval, nodeList.item(i), buildNumber)
+//        }
+//        return retval
+//    }
+//
+//    /**
+//     * This is a fallback strategy for nodesets that include non numeric content
+//     * enabling users to create lists by selecting them such that names and
+//     * values share a common parent. If a node has attributes and is empty that
+//     * node will be re-enqueued as a parent to its attributes.
+//     *
+//     * @param buildNumber the build number
+//     * @return a list of PlotPoints where the label is the last non numeric
+//     * text content and the value is the last numeric text content for
+//     * each set of nodes under a given parent.
+//     */
+//    private fun coalesceTextnodesAsLabelsStrategy(nodeList: NodeList, buildNumber: Int): List<PlotPoint> {
+//        val parentNodeMap = HashMap<Node, List<Node>>()
+//
+//        for (i in 0 until nodeList.length) {
+//            val node = nodeList.item(i)
+//            if (!parentNodeMap.containsKey(node.parentNode)) {
+//                parentNodeMap[node.parentNode] = ArrayList()
+//            }
+//            parentNodeMap[node.parentNode].add(node)
+//        }
+//
+//        val retval = ArrayList<PlotPoint>()
+//        val parents = ArrayDeque(parentNodeMap.keys)
+//        while (!parents.isEmpty()) {
+//            val parent = parents.poll()
+//            var value: Double? = null
+//            var label: String? = null
+//
+//            for (child in parentNodeMap[parent]) {
+//                if (null == child.getTextContent() || child.getTextContent().trim({ it <= ' ' }).isEmpty()) {
+//                    val attrmap = child.getAttributes()
+//                    val attrs = ArrayList<Node>()
+//                    for (i in 0 until attrmap.getLength()) {
+//                        attrs.add(attrmap.item(i))
+//                    }
+//                    parentNodeMap[child] = attrs
+//                    parents.add(child)
+//                } else if (Scanner(child.getTextContent().trim({ it <= ' ' })).hasNextDouble()) {
+//                    value = Scanner(child.getTextContent().trim({ it <= ' ' })).nextDouble()
+//                } else {
+//                    label = child.getTextContent().trim({ it <= ' ' })
+//                }
+//            }
+//            if (label != null && value != null) {
+//                addValueToList(retval, label, value.toString(), buildNumber)
+//            }
+//        }
+//        return retval
+//    }
+//
+//    /**
+//     * Load the series from a properties file.
+//     */
+//    override fun loadSeries(workspaceRootDir: FilePath, buildNumber: Int,
+//                            logger: PrintStream): List<PlotPoint>? {
+//        var `in`: InputStream? = null
+//        val inputSource: InputSource
+//
+//        try {
+//            val ret = ArrayList<PlotPoint>()
+//            val seriesFiles: Array<FilePath>
+//
+//            try {
+//                seriesFiles = workspaceRootDir.list(getFile())
+//            } catch (e: Exception) {
+//                LOGGER.log(Level.SEVERE, "Exception trying to retrieve series files", e)
+//                return null
+//            }
+//
+//            if (ArrayUtils.isEmpty(seriesFiles)) {
+//                LOGGER.info("No plot data file found: " + getFile())
+//                return null
+//            }
+//
+//            try {
+//                if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
+//                    LOGGER.log(DEFAULT_LOG_LEVEL, "Loading plot series data from: " + getFile())
+//                }
+//
+//                `in` = seriesFiles[0].read()
+//                // load existing plot file
+//                inputSource = InputSource(`in`)
+//            } catch (e: Exception) {
+//                LOGGER.log(Level.SEVERE,
+//                        "Exception reading plot series data from " + seriesFiles[0], e)
+//                return null
+//            }
+//
+//            if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
+//                LOGGER.log(DEFAULT_LOG_LEVEL, "NodeType $nodeTypeString : $nodeType")
+//            }
+//
+//            if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
+//                LOGGER.log(DEFAULT_LOG_LEVEL, "Loaded XML Plot file: " + getFile())
+//            }
+//
+//            val xpath = XPathFactory.newInstance().newXPath()
+//            val xmlObject = xpath.evaluate(this.xpath, inputSource, nodeType)
+//
+//            /*
+//             * If we have a nodeset, we need multiples, otherwise we just need
+//             * one value, and can do a toString() to set it.
+//             */
+//            if (nodeType == XPathConstants.NODESET) {
+//                val nl = xmlObject as NodeList
+//                if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
+//                    LOGGER.log(DEFAULT_LOG_LEVEL, "Number of nodes: " + nl.length)
+//                }
+//
+//                for (i in 0 until nl.length) {
+//                    val node = nl.item(i)
+//                    if (!Scanner(node.textContent.trim { it <= ' ' }).hasNextDouble()) {
+//                        return coalesceTextnodesAsLabelsStrategy(nl, buildNumber)
+//                    }
+//                }
+//                return mapNodeNameAsLabelTextContentAsValueStrategy(nl, buildNumber)
+//            } else if (nodeType == XPathConstants.NODE) {
+//                addNodeToList(ret, xmlObject as Node, buildNumber)
+//            } else {
+//                // otherwise we have a single type and can do a toString on it.
+//                if (xmlObject is NodeList) {
+//
+//                    if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
+//                        LOGGER.log(DEFAULT_LOG_LEVEL, "Number of nodes: " + xmlObject.length)
+//                    }
+//
+//                    for (i in 0 until xmlObject.length) {
+//                        val n = xmlObject.item(i)
+//
+//                        if (n != null && n.localName != null && n.textContent != null) {
+//                            addValueToList(ret, label, xmlObject, buildNumber)
+//                        }
+//                    }
+//                } else {
+//                    addValueToList(ret, label, xmlObject, buildNumber)
+//                }
+//            }
+//            return ret
+//        } catch (e: XPathExpressionException) {
+//            LOGGER.log(Level.SEVERE, "XPathExpressionException for XPath '$xpath'", e)
+//        } finally {
+//            IOUtils.closeQuietly(`in`)
+//        }
+//
+//        return null
+//    }
+//
+//    private fun addNodeToList(ret: MutableList<PlotPoint>, n: Node, buildNumber: Int) {
+//        val nodeMap = n.attributes
+//
+//        if (null != nodeMap && null != nodeMap.getNamedItem("name")) {
+//            addValueToList(ret, nodeMap.getNamedItem("name").textContent.trim { it <= ' ' },
+//                    n, buildNumber)
+//        } else {
+//            addValueToList(ret, n.localName.trim { it <= ' ' }, n, buildNumber)
+//        }
+//    }
+//
+//    /**
+//     * Convert a given object into a String.
+//     *
+//     * @param obj Xpath Object
+//     * @return String representation of the node
+//     */
+//    private fun nodeToString(obj: Any?): String? {
+//        var ret: String? = null
+//
+//        if (nodeType === XPathConstants.BOOLEAN) {
+//            return if (obj as Boolean?) "1" else "0"
+//        }
+//
+//        if (nodeType === XPathConstants.NUMBER) {
+//            return (obj as Double).toString().trim { it <= ' ' }
+//        }
+//
+//        if (nodeType === XPathConstants.NODE || nodeType === XPathConstants.NODESET) {
+//            if (obj is String) {
+//                ret = obj.trim { it <= ' ' }
+//            } else {
+//                if (null == obj) {
+//                    return null
+//                }
+//
+//                val node = obj as Node?
+//                val nodeMap = node!!.attributes
+//
+//                if (null != nodeMap && null != nodeMap.getNamedItem("time")) {
+//                    ret = nodeMap.getNamedItem("time").textContent
+//                }
+//
+//                if (null == ret) {
+//                    ret = node.textContent.trim { it <= ' ' }
+//                }
+//            }
+//        }
+//
+//        if (nodeType === XPathConstants.STRING) {
+//            ret = (obj as String).trim { it <= ' ' }
+//        }
+//
+//        // for Node/String/NodeSet, try and parse it as a double.
+//        // we don't store a double, so just throw away the result.
+//        val scanner = Scanner(ret!!)
+//        return if (scanner.hasNextDouble()) {
+//            scanner.nextDouble().toString()
+//        } else null
+//    }
+//
+//    /**
+//     * Add a given value to the list of results. This encapsulates some
+//     * otherwise duplicate logic due to nodeset/!nodeset
+//     */
+//    private fun addValueToList(list: MutableList<PlotPoint>, label: String,
+//                               nodeValue: Any, buildNumber: Int) {
+//        val value = nodeToString(nodeValue)
+//
+//        if (value != null) {
+//            if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
+//                LOGGER.log(DEFAULT_LOG_LEVEL, "Adding node: $label value: $value")
+//            }
+//            list.add(PlotPoint(value, getUrl(url, label, 0, buildNumber),
+//                    label))
+//        } else {
+//            if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
+//                LOGGER.log(DEFAULT_LOG_LEVEL, "Unable to add node: " + label
+//                        + " value: " + nodeValue)
+//            }
+//        }
+//    }
+//
+//    override fun getDescriptor(): Descriptor<Series> {
+//        return DescriptorImpl()
+//    }
+//
+//    @Extension
+//    class DescriptorImpl : Descriptor<Series>() {
+//        override fun getDisplayName(): String {
+//            return Messages.Plot_XmlSeries()
+//        }
+//
+//        @Throws(Descriptor.FormException::class)
+//        override fun newInstance(req: StaplerRequest, formData: JSONObject): Series? {
+//            return SeriesFactory.createSeries(formData, req)
+//        }
+//    }
+//
+//    companion object {
+//        @Transient
+//        private val LOGGER = Logger.getLogger(XMLSeries::class.java.name)
+//        // Debugging hack, so I don't have to change FINE/INFO...
+//        @Transient
+//        private val DEFAULT_LOG_LEVEL = Level.INFO
+//
+//        @Transient
+//        private val Q_NAME_MAP: Map<String, QName>
+//
+//        /*
+//      Fill out the qName map for easy reference.
+//     */
+//        init {
+//            val tempMap = HashMap<String, QName>()
+//            tempMap["BOOLEAN"] = XPathConstants.BOOLEAN
+//            tempMap["NODE"] = XPathConstants.NODE
+//            tempMap["NODESET"] = XPathConstants.NODESET
+//            tempMap["NUMBER"] = XPathConstants.NUMBER
+//            tempMap["STRING"] = XPathConstants.STRING
+//            Q_NAME_MAP = Collections.unmodifiableMap(tempMap)
+//        }
+//    }
+//}
