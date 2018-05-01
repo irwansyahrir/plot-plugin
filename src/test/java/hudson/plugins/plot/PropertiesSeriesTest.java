@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2008-2009 Yahoo! Inc.  All rights reserved.
  * The copyrights to the contents of this file are licensed under the MIT License (http://www.opensource.org/licenses/mit-license.php)
- */
+ *//*
+
 
 package hudson.plugins.plot;
 
@@ -9,11 +10,13 @@ import hudson.FilePath;
 import java.io.File;
 import java.util.List;
 
+*/
 /**
  * Test a Properties file series.
  *
  * @author Allen Reese
- */
+ *//*
+
 public class PropertiesSeriesTest extends SeriesTestCase {
     private static final String[] FILES = {"test.properties"};
     private static final String[] LABELS = {"testLabel"};
@@ -36,3 +39,4 @@ public class PropertiesSeriesTest extends SeriesTestCase {
         testPlotPoints(points, 1);
     }
 }
+*/

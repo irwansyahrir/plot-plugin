@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2008-2009 Yahoo! Inc.  All rights reserved.
  * The copyrights to the contents of this file are licensed under the MIT License (http://www.opensource.org/licenses/mit-license.php)
- */
+ *//*
+
 package hudson.plugins.plot;
 
 import au.com.bytecode.opencsv.CSVReader;
@@ -14,11 +15,13 @@ import java.util.List;
 import java.util.logging.Logger;
 import org.apache.commons.io.IOUtils;
 
+*/
 /**
  * Test a CSV series.
  *
  * @author Allen Reese
- */
+ *//*
+
 public class CSVSeriesTest extends SeriesTestCase {
     private static final Logger LOGGER = Logger.getLogger(CSVSeriesTest.class.getName());
 
@@ -128,3 +131,4 @@ public class CSVSeriesTest extends SeriesTestCase {
         }
     }
 }
+*/
