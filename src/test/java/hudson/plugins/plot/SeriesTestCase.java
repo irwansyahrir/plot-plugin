@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2008-2009 Yahoo! Inc.  All rights reserved.
  * The copyrights to the contents of this file are licensed under the MIT License (http://www.opensource.org/licenses/mit-license.php)
- *//*
+ */
 
 
 package hudson.plugins.plot;
@@ -9,12 +9,12 @@ package hudson.plugins.plot;
 import java.util.List;
 import org.jvnet.hudson.test.HudsonTestCase;
 
-*/
+
 /**
  * Stub to hold common series test functionality.
  *
  * @author Allen Reese
- *//*
+ */
 
 public class SeriesTestCase extends HudsonTestCase {
     public void testDummy() {
@@ -64,4 +64,4 @@ public class SeriesTestCase extends HudsonTestCase {
         }
     }
 }
-*/
+
