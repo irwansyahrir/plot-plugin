@@ -14,7 +14,7 @@ import org.junit.Ignore;
  *
  * @author Brian Roe
  */
-public class XMLSeriesTest extends KtSeriesTestCase {
+public class XMLSeriesTest extends SeriesTestCase {
     private static final String TEST_XML_FILE = "test.xml";
     private static final String TEST2_XML_FILE = "test2.xml";
     private static final String TEST3_XML_FILE = "test3.xml";

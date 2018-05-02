@@ -50,7 +50,7 @@ class KtCSVSeriesTest : KtSeriesTestCase() {
 
         LOGGER.info("Created series " + series.toString())
         // test the basic subclass properties.
-        testSeries(series, FILES[0], "", "csv")
+        testSeriesProperties(series, FILES[0], "", "csv")
 
         // load the series.
         val points = series.loadSeries(workspaceRootDir, 0, System.out)
@@ -78,7 +78,7 @@ class KtCSVSeriesTest : KtSeriesTestCase() {
 
         LOGGER.info("Created series " + series.toString())
         // test the basic subclass properties.
-        testSeries(series, file, "", "csv")
+        testSeriesProperties(series, file, "", "csv")
 
         // load the series.
         val points = series.loadSeries(workspaceRootDir, 0, System.out)

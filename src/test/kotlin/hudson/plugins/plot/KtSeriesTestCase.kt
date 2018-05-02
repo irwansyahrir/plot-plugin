@@ -1,5 +1,6 @@
 package hudson.plugins.plot
 
+import org.assertj.core.api.Assertions.assertThat
 import org.jvnet.hudson.test.HudsonTestCase
 
 
@@ -13,44 +14,41 @@ open class KtSeriesTestCase : HudsonTestCase() {
         // Allow us to subclass, and not have the tests puke.
     }
 
-    fun testSeries(series: Series, file: String, label: String, type: String) {
-        // verify the properties was created correctly
-        assertNotNull(series)
+    fun testSeriesProperties(series: Series, fileName: String, label: String, fileType: String) {
+        assertThat(series).isNotNull
 
-        assertEquals("File name is not configured correctly", file, series.file)
-        assertEquals("Label is not configured correctly", label, series.label)
-        assertEquals("Type is not configured correctly", type, series.fileType)
+        assertThat(series.file).`as`("Check file name").isEqualTo(fileName)
+        assertThat(series.label).`as`("Check label").isEqualTo(label)
+        assertThat(series.fileType).`as`("Check file type").isEqualTo(fileType)
     }
 
-    fun testPlotPoints(points: List<PlotPoint>?, expected: Int) {
-        assertTrue("Must have more than 0 columns", expected > -1)
+    fun testPlotPoints(points: List<PlotPoint>?, expectedNumber: Int) {
+        assertThat(expectedNumber).isGreaterThan(-1)
 
-        assertNotNull("loadSeries failed to return any points", points)
-        if (points!!.size != expected) {
+        assertThat(points).`as`("Check if loadSeries() returns any PlotPoints").isNotNull
+
+        if (points!!.size != expectedNumber) {
             val debug = StringBuilder()
-            var i = 0
-            for (p in points!!) {
-                debug.append("[").append(i++).append("]").append(p).append("\n")
+            for ((i, p) in points.withIndex()) {
+                debug.append("[").append(i).append("]").append(p).append("\n")
             }
 
             assertEquals("loadSeries loaded wrong number of points: expected "
-                    + expected + ", got " + points.size + "\n" + debug, expected, points.size)
+                    + expectedNumber + ", got " + points.size + "\n" + debug, expectedNumber, points.size)
         }
 
-        // validate each point.
         for (i in points.indices) {
-            assertNotNull("loadSeries returned null point at index $i", points?.get(i))
-            assertNotNull("loadSeries returned null yvalue at index $i",
-                    points?.get(i)?.yvalue)
-            assertNotNull("loadSeries returned null url at index $i", points?.get(i)?.url)
-            assertNotNull("loadSeries returned null label at index $i", points?.get(i)?.label)
+            assertThat(points[i]).`as`("Point at index $i").isNotNull
+            assertThat(points[i].yvalue).`as`("Y Value at index $i").isNotNull()
+            assertThat(points[i].url).`as`("Url at index $i").isNotNull()
+            assertThat(points[i].label).`as`("Label at index $i").isNotNull()
 
             // make sure the yvalue's can be parsed
             try {
-                java.lang.Double.parseDouble(points?.get(i)?.yvalue)
+                java.lang.Double.parseDouble(points[i].yvalue)
             } catch (nfe: NumberFormatException) {
                 assertTrue("loadSeries returned invalid yvalue "
-                        + points?.get(i)!!.yvalue + " at index " + i
+                        + points[i].yvalue + " at index " + i
                         + " Exception " + nfe.toString(), false)
             }
         }

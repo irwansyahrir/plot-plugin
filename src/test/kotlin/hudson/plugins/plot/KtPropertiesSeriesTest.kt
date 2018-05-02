@@ -26,7 +26,7 @@ class KtPropertiesSeriesTest : KtSeriesTestCase() {
         val propSeries = PropertiesSeries(FILES[0], LABELS[0])
 
         // test the basic subclass properties.
-        testSeries(propSeries, FILES[0], LABELS[0], "properties")
+        testSeriesProperties(propSeries, FILES[0], LABELS[0], "properties")
 
         // load the series.
         val points = propSeries.loadSeries(workspaceRootDir, 0, System.err)

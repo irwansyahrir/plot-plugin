@@ -40,7 +40,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
         val series = XMLSeries(TEST2_XML_FILE, xpath, "NODESET", null)
 
         // test the basic subclass properties.
-        testSeries(series, TEST2_XML_FILE, "", "xml")
+        testSeriesProperties(series, TEST2_XML_FILE, "", "xml")
 
         // load the series.
         val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
@@ -63,7 +63,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
         val series = XMLSeries(TEST_XML_FILE, xpath, "NODESET", null)
 
         // test the basic subclass properties.
-        testSeries(series, TEST_XML_FILE, "", "xml")
+        testSeriesProperties(series, TEST_XML_FILE, "", "xml")
 
         // load the series.
         val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
@@ -82,7 +82,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
         val series = XMLSeries(TEST_XML_FILE, xpath, "NODESET", null)
 
         // test the basic subclass properties.
-        testSeries(series, TEST_XML_FILE, "", "xml")
+        testSeriesProperties(series, TEST_XML_FILE, "", "xml")
 
         // load the series.
         val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
@@ -103,7 +103,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
         val series = XMLSeries(TEST3_XML_FILE, xpath, "NODESET", null)
 
         // test the basic subclass properties.
-        testSeries(series, TEST3_XML_FILE, "", "xml")
+        testSeriesProperties(series, TEST3_XML_FILE, "", "xml")
 
         // load the series.
         val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
@@ -121,7 +121,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
         val series = XMLSeries(TEST3_XML_FILE, xpath, "NODESET", null)
 
         // test the basic subclass properties.
-        testSeries(series, TEST3_XML_FILE, "", "xml")
+        testSeriesProperties(series, TEST3_XML_FILE, "", "xml")
 
         // load the series.
         val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
@@ -136,7 +136,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
         val series = XMLSeries(TEST_XML_FILE, xpath, "NODE", null)
 
         // test the basic subclass properties.
-        testSeries(series, TEST_XML_FILE, "", "xml")
+        testSeriesProperties(series, TEST_XML_FILE, "", "xml")
 
         // load the series.
         val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
@@ -152,7 +152,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
         val series = XMLSeries(TEST_XML_FILE, xpath, "STRING", null)
 
         // test the basic subclass properties.
-        testSeries(series, TEST_XML_FILE, "", "xml")
+        testSeriesProperties(series, TEST_XML_FILE, "", "xml")
 
         // load the series.
         val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
@@ -168,7 +168,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
                 "splunge")
 
         // test the basic subclass properties.
-        testSeries(series, TEST_XML_FILE, "", "xml")
+        testSeriesProperties(series, TEST_XML_FILE, "", "xml")
 
         // load the series.
         val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
@@ -184,7 +184,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
                 "http://localhost/%build%/%name%/%index%")
 
         // test the basic subclass properties.
-        testSeries(series, TEST3_XML_FILE, "", "xml")
+        testSeriesProperties(series, TEST3_XML_FILE, "", "xml")
 
         // load the series.
         val points = series.loadSeries(workspaceRootDir!!, 42, System.out)
@@ -201,7 +201,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
         val series = XMLSeries(TEST_XML_FILE, xpath, "BOOLEAN", null)
 
         // test the basic subclass properties.
-        testSeries(series, TEST_XML_FILE, "", "xml")
+        testSeriesProperties(series, TEST_XML_FILE, "", "xml")
 
         // load the series.
         val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
