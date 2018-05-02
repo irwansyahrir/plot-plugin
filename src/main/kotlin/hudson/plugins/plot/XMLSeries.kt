@@ -100,8 +100,8 @@ class XMLSeries : Series {
      */
     private fun mapNodeNameAsLabelTextContentAsValueStrategy(nodeList: NodeList,
                                                              buildNumber: Int): List<PlotPoint> {
-        val retval = ArrayList<PlotPoint>()
-        for (i in 0 until nodeList.length) {
+        val retval = mutableListOf<PlotPoint>()
+        (0 until nodeList.length).forEach { i ->
             this.addNodeToList(retval, nodeList.item(i), buildNumber)
         }
         return retval
@@ -128,26 +128,29 @@ class XMLSeries : Series {
             parentNodeMap[node.parentNode]?.add(node)
         }
 
-        val retval = ArrayList<PlotPoint>()
+        val retval = mutableListOf<PlotPoint>()
         val parents = ArrayDeque(parentNodeMap.keys)
         while (!parents.isEmpty()) {
             val parent = parents.poll()
-            var value: Double? = null
-            var label: String? = null
+            var value = 0.0
+            var label = ""
 
             val children = parentNodeMap[parent]
             for (child in children!!) {
-                val textContent = child.textContent
-                if (textContent.isNullOrEmpty() || textContent.trim().isEmpty()) {
-                    val childAttrs = child.attributes
-                    parentNodeMap[child] = (0 until childAttrs.length).mapTo(ArrayList()) { childAttrs.item(it) }
+                when {
+                    child.textContent.isNullOrEmpty() || child.textContent.trim().isEmpty() -> {
+                        val childAttrs = child.attributes
+                        parentNodeMap[child] = (0 until childAttrs.length).mapTo(ArrayList()) { childAttrs.item(it) }
+                        parents.add(child)
+                    }
 
-                    parents.add(child)
+                    Scanner(child.textContent.trim()).hasNextDouble() -> value = Scanner(child.textContent.trim()).nextDouble()
+
+                    else -> label = child.textContent.trim()
                 }
-                else if (Scanner(textContent.trim()).hasNextDouble()) value = Scanner(textContent.trim()).nextDouble()
-                else label = textContent.trim()
             }
-            if (label != null && value != null) {
+
+            if (label.isNotEmpty() && value != 0.0) {
                 addValueToList(retval, label, value.toString(), buildNumber)
             }
         }
@@ -253,10 +256,7 @@ class XMLSeries : Series {
     }
 
     private fun addNodeToList(returnList: MutableList<PlotPoint>, node: Node, buildNumber: Int) {
-        val nodeMap = node.attributes
-
-        val namedItem = nodeMap?.getNamedItem("name")
-        val label: String = namedItem?.textContent?.trim() ?: node.localName.trim()
+        val label = node.attributes?.getNamedItem("name")?.textContent?.trim() ?: node.localName.trim()
 
         addValueToList(returnList, label, node, buildNumber)
     }
@@ -264,23 +264,23 @@ class XMLSeries : Series {
     /**
      * Convert a given object into a String.
      *
-     * @param obj Xpath Object
+     * @param nodeObject Xpath Object
      * @return String representation of the node
      */
-    private fun nodeToString(obj: Any?): String? {
+    private fun nodeToString(nodeObject: Any): String {
         if (nodeType === XPathConstants.BOOLEAN) {
-            return if (obj as Boolean) "1" else "0"
+            return if (nodeObject as Boolean) "1" else "0"
         }
 
         if (nodeType === XPathConstants.NUMBER) {
-            return (obj as Double).toString().trim()
+            return (nodeObject as Double).toString().trim()
         }
 
         if (nodeType === XPathConstants.NODE || nodeType === XPathConstants.NODESET) {
-            return when (obj) {
-                is String -> parseAsDouble(obj.trim())
+            return when (nodeObject) {
+                is String -> parseAsDouble(nodeObject.trim())
                 else -> {
-                    val node = obj as Node
+                    val node = nodeObject as Node
                     val namedItem = node.attributes?.getNamedItem("time")
                     parseAsDouble(namedItem?.textContent?.trim() ?: node.textContent.trim())
                 }
@@ -288,19 +288,16 @@ class XMLSeries : Series {
         }
 
         if (nodeType === XPathConstants.STRING) {
-            return parseAsDouble((obj as String).trim())
+            return parseAsDouble((nodeObject as String).trim())
         }
 
-        return null
+        return ""
     }
 
-    private fun parseAsDouble(nodeString: String): String? {
-        // for Node/String/NodeSet, try and parse it as a double.
-        // we don't store a double, so just throw away the result.
-        val scanner = Scanner(nodeString)
+    private fun parseAsDouble(nodeString: String): String {
         return when {
-            scanner.hasNextDouble() -> scanner.nextDouble().toString()
-            else -> null
+            Scanner(nodeString).hasNextDouble() -> Scanner(nodeString).nextDouble().toString()
+            else -> ""
         }
     }
 
@@ -313,7 +310,7 @@ class XMLSeries : Series {
 
         val value = nodeToString(nodeValue)
 
-        if (value != null) {
+        if (value.isNotEmpty()) {
             if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
                 LOGGER.log(DEFAULT_LOG_LEVEL, "Adding node: $label value: $value")
             }

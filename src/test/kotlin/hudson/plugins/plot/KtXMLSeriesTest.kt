@@ -19,20 +19,20 @@ const val TEST2_XML_FILE = "test2.xml"
 const val TEST3_XML_FILE = "test3.xml"
 
 class KtXMLSeriesTest : KtSeriesTestCase() {
-    private var workspaceDirFile: File? = null
-    private var workspaceRootDir: FilePath? = null
+    private var xmlFileDir: File? = null
+    private var xmlFilePath: FilePath? = null
 
     @Before
     public override fun setUp() {
         // first create a FilePath to load the test Properties file.
-        workspaceDirFile = File("target/test-classes/")
-        workspaceRootDir = FilePath(workspaceDirFile!!)
+        xmlFileDir = File("target/test-classes/")
+        xmlFilePath = FilePath(xmlFileDir!!)
     }
 
     @After
     public override fun tearDown() {
-        workspaceRootDir = null
-        workspaceDirFile = null
+        xmlFilePath = null
+        xmlFileDir = null
     }
 
     fun testXMLSeries_WhenNodesSharingAParentHaveOneStringAndOneNumericContent_ThenCoalesceNodesToPointLabelledWithStringContent() {
@@ -42,7 +42,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
 
         testSeriesProperties(series, TEST2_XML_FILE, "", "xml")
 
-        val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
+        val points = series.loadSeries(xmlFilePath!!, 0, System.out)
 
         assertThat(points).isNotNull
         assertThat(points!!.size).isEqualTo(4)
@@ -64,7 +64,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
 
         testSeriesProperties(series, TEST_XML_FILE, "", "xml")
 
-        val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
+        val points = series.loadSeries(xmlFilePath!!, 0, System.out)
 
         assertThat(points).isNotNull
         assertThat(points!!.size).isEqualTo(3)
@@ -81,7 +81,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
 
         testSeriesProperties(series, TEST_XML_FILE, "", "xml")
 
-        val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
+        val points = series.loadSeries(xmlFilePath!!, 0, System.out)
 
         assertThat(points).isNotNull
         assertThat(points!!.size).isEqualTo(4)
@@ -100,7 +100,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
 
         testSeriesProperties(series, TEST3_XML_FILE, "", "xml")
 
-        val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
+        val points = series.loadSeries(xmlFilePath!!, 0, System.out)
 
         assertThat(points).isNotNull
         assertThat(points!!.size).isEqualTo(2)
@@ -116,7 +116,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
 
         testSeriesProperties(series, TEST3_XML_FILE, "", "xml")
 
-        val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
+        val points = series.loadSeries(xmlFilePath!!, 0, System.out)
 
         assertThat(points).isNotNull
         assertThat(points!!.size).isEqualTo(0)
@@ -130,7 +130,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
 
         testSeriesProperties(series, TEST_XML_FILE, "", "xml")
 
-        val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
+        val points = series.loadSeries(xmlFilePath!!, 0, System.out)
 
         assertThat(points).isNotNull
         assertThat(points!!.size).isEqualTo(1)
@@ -145,7 +145,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
 
         testSeriesProperties(series, TEST_XML_FILE, "", "xml")
 
-        val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
+        val points = series.loadSeries(xmlFilePath!!, 0, System.out)
 
         assertThat(points).isNotNull
 
@@ -158,7 +158,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
 
         testSeriesProperties(series, TEST_XML_FILE, "", "xml")
 
-        val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
+        val points = series.loadSeries(xmlFilePath!!, 0, System.out)
 
         assertThat(points).isNotNull
 
@@ -172,7 +172,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
 
         testSeriesProperties(series, TEST3_XML_FILE, "", "xml")
 
-        val points = series.loadSeries(workspaceRootDir!!, 42, System.out)
+        val points = series.loadSeries(xmlFilePath!!, 42, System.out)
 
         assertThat(points).isNotNull
 
@@ -189,7 +189,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
 
         testSeriesProperties(series, TEST_XML_FILE, "", "xml")
 
-        val points = series.loadSeries(workspaceRootDir!!, 0, System.out)
+        val points = series.loadSeries(xmlFilePath!!, 0, System.out)
 
         assertThat(points).isNotNull
 
