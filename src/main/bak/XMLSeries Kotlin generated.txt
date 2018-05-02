@@ -118,13 +118,14 @@ class XMLSeries : Series {
      * text content and the value is the last numeric text content for
      * each set of nodes under a given parent.
      */
-    private fun coalesceTextnodesAsLabels(nodeList: NodeList, buildNumber: Int): List<PlotPoint> {
-
+    private fun coalesceTextnodesAsLabelsStrategy(nodeList: NodeList, buildNumber: Int): List<PlotPoint> {
         val parentNodeMap = mutableMapOf<Node, MutableList<Node>>()
 
         for (i in 0 until nodeList.length) {
             val node = nodeList.item(i)
-            parentNodeMap.putIfAbsent(node.parentNode, mutableListOf())
+            if (!parentNodeMap.containsKey(node.parentNode)) {
+                parentNodeMap[node.parentNode] = mutableListOf()
+            }
             parentNodeMap[node.parentNode]?.add(node)
         }
 
@@ -135,17 +136,21 @@ class XMLSeries : Series {
             var value: Double? = null
             var label: String? = null
 
-            val children = parentNodeMap[parent]
+            var children = parentNodeMap[parent]
             for (child in children!!) {
-                val textContent = child.textContent
-                if (textContent.isNullOrEmpty() || textContent.trim().isEmpty()) {
-                    val childAttrs = child.attributes
-                    parentNodeMap[child] = (0 until childAttrs.length).mapTo(ArrayList()) { childAttrs.item(it) }
-
+                if (null == child.getTextContent() || child.getTextContent().trim({ it <= ' ' }).isEmpty()) {
+                    val attrmap = child.getAttributes()
+                    val attrs = ArrayList<Node>()
+                    for (i in 0 until attrmap.getLength()) {
+                        attrs.add(attrmap.item(i))
+                    }
+                    parentNodeMap[child] = attrs
                     parents.add(child)
+                } else if (Scanner(child.getTextContent().trim({ it <= ' ' })).hasNextDouble()) {
+                    value = Scanner(child.getTextContent().trim({ it <= ' ' })).nextDouble()
+                } else {
+                    label = child.getTextContent().trim({ it <= ' ' })
                 }
-                else if (Scanner(textContent.trim()).hasNextDouble()) value = Scanner(textContent.trim()).nextDouble()
-                else label = textContent.trim()
             }
             if (label != null && value != null) {
                 addValueToList(retval, label, value.toString(), buildNumber)
@@ -157,27 +162,25 @@ class XMLSeries : Series {
     /**
      * Load the series from a properties file.
      */
-    override fun loadSeries(workspaceRootDir: FilePath,
-                            buildNumber: Int,
-                            logger: PrintStream): List<PlotPoint> {
-
-        var inputStream: InputStream? = null
+    override fun loadSeries(workspaceRootDir: FilePath, buildNumber: Int,
+                            logger: PrintStream): List<PlotPoint>? {
+        var `in`: InputStream? = null
         val inputSource: InputSource
 
         try {
-            val returnedPlotPoints = ArrayList<PlotPoint>()
+            val ret = ArrayList<PlotPoint>()
             val seriesFiles: Array<FilePath>
 
             try {
                 seriesFiles = workspaceRootDir.list(getFile())
             } catch (e: Exception) {
                 LOGGER.log(Level.SEVERE, "Exception trying to retrieve series files", e)
-                return emptyList()
+                return null
             }
 
             if (ArrayUtils.isEmpty(seriesFiles)) {
                 LOGGER.info("No plot data file found: " + getFile())
-                return emptyList()
+                return null
             }
 
             try {
@@ -185,12 +188,13 @@ class XMLSeries : Series {
                     LOGGER.log(DEFAULT_LOG_LEVEL, "Loading plot series data from: " + getFile())
                 }
 
-                inputStream = seriesFiles[0].read()
+                `in` = seriesFiles[0].read()
                 // load existing plot file
-                inputSource = InputSource(seriesFiles[0].read())
+                inputSource = InputSource(`in`)
             } catch (e: Exception) {
-                LOGGER.log(Level.SEVERE,"Exception reading plot series data from " + seriesFiles[0], e)
-                return emptyList()
+                LOGGER.log(Level.SEVERE,
+                        "Exception reading plot series data from " + seriesFiles[0], e)
+                return null
             }
 
             if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
@@ -209,20 +213,20 @@ class XMLSeries : Series {
              * one value, and can do a toString() to set it.
              */
             if (nodeType == XPathConstants.NODESET) {
-                val nodeList = xmlObject as NodeList
+                val nl = xmlObject as NodeList
                 if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                    LOGGER.log(DEFAULT_LOG_LEVEL, "Number of nodes: " + nodeList.length)
+                    LOGGER.log(DEFAULT_LOG_LEVEL, "Number of nodes: " + nl.length)
                 }
 
-                for (i in 0 until nodeList.length) {
-                    val node = nodeList.item(i)
-                    if (!Scanner(node.textContent.trim()).hasNextDouble()) {
-                        return coalesceTextnodesAsLabels(nodeList, buildNumber)
+                for (i in 0 until nl.length) {
+                    val node = nl.item(i)
+                    if (!Scanner(node.textContent.trim { it <= ' ' }).hasNextDouble()) {
+                        return coalesceTextnodesAsLabelsStrategy(nl, buildNumber)
                     }
                 }
-                return mapNodeNameAsLabelTextContentAsValueStrategy(nodeList, buildNumber)
+                return mapNodeNameAsLabelTextContentAsValueStrategy(nl, buildNumber)
             } else if (nodeType == XPathConstants.NODE) {
-                addNodeToList(returnedPlotPoints, xmlObject as Node, buildNumber)
+                addNodeToList(ret, xmlObject as Node, buildNumber)
             } else {
                 // otherwise we have a single type and can do a toString on it.
                 if (xmlObject is NodeList) {
@@ -235,21 +239,21 @@ class XMLSeries : Series {
                         val n = xmlObject.item(i)
 
                         if (n != null && n.localName != null && n.textContent != null) {
-                            addValueToList(returnedPlotPoints, label, xmlObject, buildNumber)
+                            addValueToList(ret, label, xmlObject, buildNumber)
                         }
                     }
                 } else {
-                    addValueToList(returnedPlotPoints, label, xmlObject, buildNumber)
+                    addValueToList(ret, label, xmlObject, buildNumber)
                 }
             }
-            return returnedPlotPoints
+            return ret
         } catch (e: XPathExpressionException) {
             LOGGER.log(Level.SEVERE, "XPathExpressionException for XPath '$xpathString'", e)
         } finally {
-            IOUtils.closeQuietly(inputStream)
+            IOUtils.closeQuietly(`in`)
         }
 
-        return emptyList()
+        return null
     }
 
     private fun addNodeToList(returnList: MutableList<PlotPoint>, node: Node, buildNumber: Int) {
