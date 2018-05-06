@@ -16,20 +16,17 @@ import java.io.File
 class KtPropertiesSeriesTest : KtSeriesTestCase() {
 
     fun testPropertiesSeries() {
-        // first create a FilePath to load the test Properties file.
-        val workspaceDirFile = File("target/test-classes/")
-        val workspaceRootDir = FilePath(workspaceDirFile)
+        val propertiesFileDir = File("target/test-classes/")
+        val propertiesFilePath = FilePath(propertiesFileDir)
 
-        println("workspace path path: " + workspaceDirFile.absolutePath)
+        println("workspace path path: " + propertiesFileDir.absolutePath)
 
-        // Create a new properties series.
         val propSeries = PropertiesSeries(FILES[0], LABELS[0])
 
-        // test the basic subclass properties.
         testSeriesProperties(propSeries, FILES[0], LABELS[0], "properties")
 
-        // load the series.
-        val points = propSeries.loadSeries(workspaceRootDir, 0, System.err)
+        val points = propSeries.loadSeries(propertiesFilePath, 0, System.err)
+
         testPlotPoints(points, 1)
     }
 

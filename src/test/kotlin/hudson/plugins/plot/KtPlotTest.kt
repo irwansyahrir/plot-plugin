@@ -44,102 +44,102 @@ import java.util.*
 class KtPlotTest {
 
     @get:Rule
-    var j = JenkinsRule()
+    var jenkinsRule = JenkinsRule()
 
     @Test
     @Throws(Exception::class)
     fun discardPlotSamplesForOldBuilds() {
-        val p = jobArchivingBuilds(1)
+        val project = jobArchivingBuilds(1)
 
-        plotBuilds(p, "2", false)
+        plotBuilds(project, "2", false)
 
-        j.buildAndAssertSuccess(p)
-        assertSampleCount(p, 1)
+        jenkinsRule.buildAndAssertSuccess(project)
+        assertSampleCount(project, 1)
 
-        j.buildAndAssertSuccess(p)
-        assertSampleCount(p, 1) // Truncated to 1
+        jenkinsRule.buildAndAssertSuccess(project)
+        assertSampleCount(project, 1) // Truncated to 1
 
-        j.buildAndAssertSuccess(p)
-        assertSampleCount(p, 1) // Still 1
+        jenkinsRule.buildAndAssertSuccess(project)
+        assertSampleCount(project, 1) // Still 1
     }
 
     @Test
     @Throws(Exception::class)
     fun discardPlotSamplesForDeletedBuilds() {
-        val p = jobArchivingBuilds(10)
+        val project = jobArchivingBuilds(10)
 
-        plotBuilds(p, "", false)
+        plotBuilds(project, "", false)
 
-        j.buildAndAssertSuccess(p)
-        assertSampleCount(p, 1)
+        jenkinsRule.buildAndAssertSuccess(project)
+        assertSampleCount(project, 1)
 
-        j.buildAndAssertSuccess(p)
-        assertSampleCount(p, 2)
+        jenkinsRule.buildAndAssertSuccess(project)
+        assertSampleCount(project, 2)
 
-        j.buildAndAssertSuccess(p)
-        assertSampleCount(p, 3)
+        jenkinsRule.buildAndAssertSuccess(project)
+        assertSampleCount(project, 3)
 
-        p.lastBuild!!.delete()
-        assertSampleCount(p, 2) // Data should be removed with the build
+        project.lastBuild!!.delete()
+        assertSampleCount(project, 2) // Data should be removed with the build
     }
 
     @Test
     @Throws(Exception::class)
     fun keepPlotSamplesForOldBuilds() {
-        val p = jobArchivingBuilds(1)
+        val project = jobArchivingBuilds(1)
 
-        plotBuilds(p, "2", true)
+        plotBuilds(project, "2", true)
 
-        j.buildAndAssertSuccess(p)
-        assertSampleCount(p, 1)
+        jenkinsRule.buildAndAssertSuccess(project)
+        assertSampleCount(project, 1)
 
-        j.buildAndAssertSuccess(p)
-        assertSampleCount(p, 2)
+        jenkinsRule.buildAndAssertSuccess(project)
+        assertSampleCount(project, 2)
 
-        j.buildAndAssertSuccess(p)
-        assertSampleCount(p, 2) // Plot 2 builds
+        jenkinsRule.buildAndAssertSuccess(project)
+        assertSampleCount(project, 2) // Plot 2 builds
 
-        j.buildAndAssertSuccess(p)
-        assertSampleCount(p, 2) // Still 2
+        jenkinsRule.buildAndAssertSuccess(project)
+        assertSampleCount(project, 2) // Still 2
     }
 
     @Test
     @Throws(Exception::class)
     fun keepPlotSamplesForDeletedBuilds() {
-        val p = jobArchivingBuilds(10)
+        val project = jobArchivingBuilds(10)
 
-        plotBuilds(p, "", true)
+        plotBuilds(project, "", true)
 
-        j.buildAndAssertSuccess(p)
-        assertSampleCount(p, 1)
+        jenkinsRule.buildAndAssertSuccess(project)
+        assertSampleCount(project, 1)
 
-        j.buildAndAssertSuccess(p)
-        assertSampleCount(p, 2)
+        jenkinsRule.buildAndAssertSuccess(project)
+        assertSampleCount(project, 2)
 
-        j.buildAndAssertSuccess(p)
-        assertSampleCount(p, 3)
+        jenkinsRule.buildAndAssertSuccess(project)
+        assertSampleCount(project, 3)
 
-        p.lastBuild!!.delete()
-        assertSampleCount(p, 3) // Data should be kept
+        project.lastBuild!!.delete()
+        assertSampleCount(project, 3) // Data should be kept
     }
 
     @Test
     @Throws(Exception::class)
     fun discardPlotSamplesForDeletedMatrixBuilds() {
-        val p = matrixJobArchivingBuilds(10)
-        p.axes = AxisList(TextAxis("a", "a"))
+        val matrixProject = matrixJobArchivingBuilds(10)
+        matrixProject.axes = AxisList(TextAxis("a", "a"))
 
-        val c = p.getItem("a=a")
+        val c = matrixProject.getItem("a=a")
 
-        plotMatrixBuilds(p, "10", false)
+        plotMatrixBuilds(matrixProject, "10", false)
 
-        j.buildAndAssertSuccess(p)
+        jenkinsRule.buildAndAssertSuccess(matrixProject)
         assertSampleCount(c, 1)
 
-        j.buildAndAssertSuccess(p)
+        jenkinsRule.buildAndAssertSuccess(matrixProject)
         assertSampleCount(c, 2)
 
-        j.buildAndAssertSuccess(p)
+        jenkinsRule.buildAndAssertSuccess(matrixProject)
         assertSampleCount(c, 3)
 
         c!!.lastBuild!!.delete()
@@ -149,72 +149,72 @@ class KtPlotTest {
     @Test
     @Throws(Exception::class)
     fun keepPlotSamplesForDeletedMatrixBuilds() {
-        val p = matrixJobArchivingBuilds(10)
-        p.axes = AxisList(TextAxis("a", "a"))
+        val matrixProject = matrixJobArchivingBuilds(10)
+        matrixProject.axes = AxisList(TextAxis("a", "a"))
 
-        val c = p.getItem("a=a")
+        val c = matrixProject.getItem("a=a")
 
-        plotMatrixBuilds(p, "10", true)
+        plotMatrixBuilds(matrixProject, "10", true)
 
-        j.buildAndAssertSuccess(p)
+        jenkinsRule.buildAndAssertSuccess(matrixProject)
         assertSampleCount(c, 1)
 
-        j.buildAndAssertSuccess(p)
+        jenkinsRule.buildAndAssertSuccess(matrixProject)
         assertSampleCount(c, 2)
 
-        j.buildAndAssertSuccess(p)
+        jenkinsRule.buildAndAssertSuccess(matrixProject)
         assertSampleCount(c, 3)
 
         c!!.lastBuild!!.delete()
         assertSampleCount(c, 3) // Data should be kept
-        p.lastBuild!!.delete()
+        matrixProject.lastBuild!!.delete()
         assertSampleCount(c, 3) // Data should be kept
     }
 
     @Throws(Exception::class)
     private fun jobArchivingBuilds(count: Int): FreeStyleProject {
-        val p = j.createFreeStyleProject()
-        p.buildersList.add(PlotBuildNumber())
-        p.buildDiscarder = LogRotator(-1, count, -1, -1)
+        val project = jenkinsRule.createFreeStyleProject()
+        project.buildersList.add(PlotBuildNumber())
+        project.buildDiscarder = LogRotator(-1, count, -1, -1)
 
-        return p
+        return project
     }
 
     @Throws(Exception::class)
     private fun matrixJobArchivingBuilds(count: Int): MatrixProject {
-        val p = j.createProject(MatrixProject::class.java)
+        val matrixProject = jenkinsRule.createProject(MatrixProject::class.java)
 
-        p.buildersList.add(PlotBuildNumber())
-        p.buildDiscarder = LogRotator(-1, count, -1, -1)
+        matrixProject.buildersList.add(PlotBuildNumber())
+        matrixProject.buildDiscarder = LogRotator(-1, count, -1, -1)
 
-        return p
+        return matrixProject
     }
 
-    private fun plotBuilds(p: AbstractProject<*, *>, count: String, keepRecords: Boolean) {
+    private fun plotBuilds(project: AbstractProject<*, *>, count: String, keepRecords: Boolean) {
         val publisher = PlotPublisher()
         val plot = Plot("Title", "Number", "default", count, null,
                 "line", false, keepRecords, false, false, null, null)
-        p.getPublishersList().add(publisher)
+        project.getPublishersList().add(publisher)
         publisher.addPlot(plot)
         plot.series = Arrays.asList<Series>(PropertiesSeries("src.properties", null))
     }
 
-    private fun plotMatrixBuilds(p: AbstractProject<*, *>, count: String, keepRecords: Boolean) {
+    private fun plotMatrixBuilds(project: AbstractProject<*, *>, count: String, keepRecords: Boolean) {
         val publisher = MatrixPlotPublisher()
         val plot = Plot("Title", "Number", "default", count, null,
                 "line", false, keepRecords, false, false, null, null)
-        p.getPublishersList().add(publisher)
+        project.getPublishersList().add(publisher)
         publisher.plots = Arrays.asList(plot)
         plot.series = Arrays.asList<Series>(PropertiesSeries("src.properties", null))
     }
 
     @Throws(Exception::class)
-    private fun assertSampleCount(p: AbstractProject<*, *>?, count: Int) {
-        val pr = if (p is MatrixConfiguration)
-            p.getAction(MatrixPlotAction::class.java).getDynamic("default")
+    private fun assertSampleCount(project: AbstractProject<*, *>?, count: Int) {
+        val plotReport = if (project is MatrixConfiguration)
+            project.getAction(MatrixPlotAction::class.java).getDynamic("default")
         else
-            p!!.getAction(PlotAction::class.java).getDynamic("default", null, null)
-        val table = pr.getTable(0)
+            project!!.getAction(PlotAction::class.java).getDynamic("default", null, null)
+        val table = plotReport.getTable(0)
         assertEquals("Plot sample count", count.toLong(), (table.size - 1).toLong())
     }
 
