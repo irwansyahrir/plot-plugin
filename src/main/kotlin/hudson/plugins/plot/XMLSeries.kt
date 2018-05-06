@@ -10,7 +10,6 @@ import hudson.FilePath
 import hudson.model.Descriptor
 import net.sf.json.JSONObject
 import org.apache.commons.io.IOUtils
-import org.apache.commons.lang.ArrayUtils
 import org.kohsuke.stapler.DataBoundConstructor
 import org.kohsuke.stapler.StaplerRequest
 import org.w3c.dom.Node
@@ -100,11 +99,11 @@ class XMLSeries : Series {
      */
     private fun mapNodeNameAsLabelTextContentAsValueStrategy(nodeList: NodeList,
                                                              buildNumber: Int): List<PlotPoint> {
-        val retval = mutableListOf<PlotPoint>()
+        val series = mutableListOf<PlotPoint>()
         (0 until nodeList.length).forEach { i ->
-            this.addNodeToList(retval, nodeList.item(i), buildNumber)
+            series.add(getNode(nodeList.item(i), buildNumber))
         }
-        return retval
+        return series
     }
 
     /**
@@ -128,7 +127,7 @@ class XMLSeries : Series {
             parentNodeMap[node.parentNode]?.add(node)
         }
 
-        val retval = mutableListOf<PlotPoint>()
+        val returnValue = mutableListOf<PlotPoint>()
         val parents = ArrayDeque(parentNodeMap.keys)
         while (!parents.isEmpty()) {
             val parent = parents.poll()
@@ -151,10 +150,10 @@ class XMLSeries : Series {
             }
 
             if (label.isNotEmpty() && value != 0.0) {
-                addValueToList(retval, label, value.toString(), buildNumber)
+                returnValue.add(getSeriesValue(label, value.toString(), buildNumber)!!)
             }
         }
-        return retval
+        return returnValue
     }
 
     /**
@@ -164,37 +163,13 @@ class XMLSeries : Series {
                             buildNumber: Int,
                             logger: PrintStream): List<PlotPoint> {
 
-        var inputStream: InputStream? = null
-        val inputSource: InputSource
-
         try {
-            val returnedPlotPoints = ArrayList<PlotPoint>()
-            val seriesFiles: Array<FilePath>
-
-            try {
-                seriesFiles = workspaceRootDir.list(super.file)
-            } catch (e: Exception) {
-                LOGGER.log(Level.SEVERE, "Exception trying to retrieve series files", e)
+            val seriesFiles: Array<FilePath> = retrieveSeriesFiles(workspaceRootDir)
+            if (seriesFiles.isEmpty()){
                 return emptyList()
             }
 
-            if (ArrayUtils.isEmpty(seriesFiles)) {
-                LOGGER.info("No plot data file found: " + super.file)
-                return emptyList()
-            }
-
-            try {
-                if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                    LOGGER.log(DEFAULT_LOG_LEVEL, "Loading plot series data from: " + super.file)
-                }
-
-                inputStream = seriesFiles[0].read()
-                // load existing plot file
-                inputSource = InputSource(seriesFiles[0].read())
-            } catch (e: Exception) {
-                LOGGER.log(Level.SEVERE,"Exception reading plot series data from " + seriesFiles[0], e)
-                return emptyList()
-            }
+            var inputSource: InputSource? = getInputSource(seriesFiles) ?: return emptyList()
 
             if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
                 LOGGER.log(DEFAULT_LOG_LEVEL, "NodeType $nodeTypeString : $nodeType")
@@ -211,54 +186,96 @@ class XMLSeries : Series {
              * If we have a nodeset, we need multiples, otherwise we just need
              * one value, and can do a toString() to set it.
              */
+            val returnedSeries = mutableListOf<PlotPoint>()
             if (nodeType == XPathConstants.NODESET) {
-                val nodeList = xmlObject as NodeList
-                if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                    LOGGER.log(DEFAULT_LOG_LEVEL, "Number of nodes: " + nodeList.length)
-                }
-
-                for (i in 0 until nodeList.length) {
-                    val node = nodeList.item(i)
-                    if (!Scanner(node.textContent.trim()).hasNextDouble()) {
-                        return coalesceTextnodesAsLabels(nodeList, buildNumber)
-                    }
-                }
-                return mapNodeNameAsLabelTextContentAsValueStrategy(nodeList, buildNumber)
+                return getSeriesForNodeset(xmlObject, buildNumber)
             } else if (nodeType == XPathConstants.NODE) {
-                addNodeToList(returnedPlotPoints, xmlObject as Node, buildNumber)
+                returnedSeries.add(getNode(xmlObject as Node, buildNumber))
             } else {
-                // otherwise we have a single type and can do a toString on it.
                 if (xmlObject is NodeList) {
-
-                    if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                        LOGGER.log(DEFAULT_LOG_LEVEL, "Number of nodes: " + xmlObject.length)
-                    }
-
-                    for (i in 0 until xmlObject.length) {
-                        val n = xmlObject.item(i)
-
-                        if (n != null && n.localName != null && n.textContent != null) {
-                            addValueToList(returnedPlotPoints, label, xmlObject, buildNumber)
-                        }
-                    }
+                    addNodeListToSeries(returnedSeries, xmlObject, buildNumber)
                 } else {
-                    addValueToList(returnedPlotPoints, label, xmlObject, buildNumber)
+                    returnedSeries.add(getSeriesValue(label, xmlObject, buildNumber)!!)
                 }
             }
-            return returnedPlotPoints
+            return returnedSeries
         } catch (e: XPathExpressionException) {
             LOGGER.log(Level.SEVERE, "XPathExpressionException for XPath '$xpathString'", e)
-        } finally {
-            IOUtils.closeQuietly(inputStream)
         }
 
         return emptyList()
     }
 
-    private fun addNodeToList(returnList: MutableList<PlotPoint>, node: Node, buildNumber: Int) {
+    private fun addNodeListToSeries(series: MutableList<PlotPoint>, nodeList: NodeList, buildNumber: Int) {
+        if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
+            LOGGER.log(DEFAULT_LOG_LEVEL, "Number of nodes: " + nodeList.length)
+        }
+
+        for (i in 0 until nodeList.length) {
+            val node = nodeList.item(i)
+            if (node?.localName != null && node.textContent != null) {
+                series.add(getSeriesValue(label, nodeList, buildNumber)!!)
+            }
+        }
+    }
+
+    private fun getSeriesForNodeset(xmlObject: Any?, buildNumber: Int): List<PlotPoint> {
+        val nodeList = xmlObject as NodeList
+
+        if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
+            LOGGER.log(DEFAULT_LOG_LEVEL, "Number of nodes: " + nodeList.length)
+        }
+
+        for (i in 0 until nodeList.length) {
+            val node = nodeList.item(i)
+            if (!Scanner(node.textContent.trim()).hasNextDouble()) {
+                return coalesceTextnodesAsLabels(nodeList, buildNumber)
+            }
+        }
+        return mapNodeNameAsLabelTextContentAsValueStrategy(nodeList, buildNumber)
+    }
+
+    private fun getInputSource(seriesFiles: Array<FilePath>): InputSource? {
+        var inputStream : InputStream? = null
+        try {
+            if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
+                LOGGER.log(DEFAULT_LOG_LEVEL, "Loading plot series data from: " + super.file)
+            }
+
+            inputStream = seriesFiles[0].read()
+            // load existing plot file
+            return InputSource(inputStream)
+        } catch (e: Exception) {
+            LOGGER.log(Level.SEVERE, "Exception reading plot series data from " + seriesFiles[0], e)
+            IOUtils.closeQuietly(inputStream)
+            return null
+        }
+
+        //TODO: check if IOUtils.closeQuietly(inputStream) should be called somewhere else
+    }
+
+    private fun retrieveSeriesFiles(workspaceRootDir: FilePath): Array<FilePath> {
+        val seriesFiles: Array<FilePath>
+        try {
+            seriesFiles = workspaceRootDir.list(super.file)
+        } catch (e: Exception) {
+            LOGGER.log(Level.SEVERE, "Exception trying to retrieve series files", e)
+            return emptyArray()
+        }
+
+        if (seriesFiles.isEmpty()) {
+            LOGGER.info("No plot data file found: " + super.file)
+            return emptyArray()
+        }
+
+        return seriesFiles
+    }
+
+    private fun getNode(node: Node, buildNumber: Int) : PlotPoint {
         val label = node.attributes?.getNamedItem("name")?.textContent?.trim() ?: node.localName.trim()
 
-        addValueToList(returnList, label, node, buildNumber)
+        return getSeriesValue(label, node, buildNumber)!!
+
     }
 
     /**
@@ -305,8 +322,7 @@ class XMLSeries : Series {
      * Add a given value to the plotPoints of results. This encapsulates some
      * otherwise duplicate logic due to nodeset/!nodeset
      */
-    private fun addValueToList(plotPoints: MutableList<PlotPoint>, label: String?,
-                               nodeValue: Any, buildNumber: Int) {
+    private fun getSeriesValue(label: String?, nodeValue: Any, buildNumber: Int): PlotPoint? {
 
         val value = nodeToString(nodeValue)
 
@@ -315,11 +331,12 @@ class XMLSeries : Series {
                 LOGGER.log(DEFAULT_LOG_LEVEL, "Adding node: $label value: $value")
             }
             val pointUrl = getUrl(baseUrl, label, 0, buildNumber)
-            plotPoints.add(PlotPoint(value, pointUrl, label))
+            return PlotPoint(value, pointUrl, label)
         } else {
             if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
                 LOGGER.log(DEFAULT_LOG_LEVEL, "Unable to add node: $label value: $nodeValue")
             }
+            return null
         }
     }
 
