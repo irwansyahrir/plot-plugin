@@ -43,7 +43,7 @@ import java.util.*
 
 class KtPlotTest {
 
-    @Rule
+    @get:Rule
     var j = JenkinsRule()
 
     @Test

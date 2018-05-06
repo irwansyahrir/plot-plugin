@@ -12,7 +12,7 @@ import java.util.concurrent.*
 
 class KtPlotBuildActionTest {
 
-    @Rule
+    @get:Rule
     var r = JenkinsRule()
     private var plotBuildAction: PlotBuildAction? = null
 
