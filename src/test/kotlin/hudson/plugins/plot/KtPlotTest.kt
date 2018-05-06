@@ -34,16 +34,13 @@ import hudson.model.BuildListener
 import hudson.model.FreeStyleProject
 import hudson.tasks.Builder
 import hudson.tasks.LogRotator
-import java.io.IOException
-import java.util.Arrays
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.jvnet.hudson.test.JenkinsRule
+import java.io.IOException
+import java.util.*
 
-import org.junit.Assert.assertEquals
-import org.junit.Ignore
-
-@Ignore
 class KtPlotTest {
 
     @Rule

@@ -7,21 +7,18 @@ package hudson.plugins.plot
 
 import au.com.bytecode.opencsv.CSVReader
 import hudson.FilePath
-import junit.framework.TestCase
+import org.apache.commons.io.IOUtils
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.util.logging.Logger
-import org.apache.commons.io.IOUtils
-import org.junit.Ignore
 
 /**
  * Test a CSV series.
  *
  * @author Allen Reese
  */
-@Ignore
 class KtCSVReaderTest : KtSeriesTestCase() {
     companion object {
         private val LOGGER = Logger.getLogger(KtCSVReaderTest::class.simpleName)

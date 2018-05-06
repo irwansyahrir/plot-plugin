@@ -42,7 +42,7 @@
 //            }
 //
 //            assertEquals("loadSeries loaded wrong number of points: expected "
-//                    + expected + ", got " + points.size() + "\n" + debug, expected, points.size());
+//                  + expected + ", got " + points.size() + "\n" + debug, expected, points.size());
 //        }
 //
 //        // validate each point.
@@ -51,7 +51,7 @@
 //            assertNotNull("loadSeries returned null yvalue at index " + i,
 //                    points.get(i).getYvalue());
 //            assertNotNull("loadSeries returned null url at index " + i, points.get(i).getUrl());
-//            assertNotNull("loadSeries returned null label at index " + i, points.get(i).getLabel());
+//         assertNotNull("loadSeries returned null label at index " + i, points.get(i).getLabel());
 //
 //            // make sure the yvalue's can be parsed
 //            try {

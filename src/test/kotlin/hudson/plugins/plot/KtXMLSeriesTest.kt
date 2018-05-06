@@ -4,7 +4,6 @@ import hudson.FilePath
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.After
 import org.junit.Before
-import org.junit.Ignore
 import java.io.File
 import java.util.*
 
@@ -182,7 +181,6 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
         assertThat(points[1].url).isEqualTo("http://localhost/42/two/0")
     }
 
-    @Ignore
     fun testXMLSeriesBoolean() {
         val xpath = "//testcase[@name='testOne']/@time"
         val series = XMLSeries(TEST_XML_FILE, xpath, "BOOLEAN", null)
