@@ -172,20 +172,20 @@ class XMLSeries : Series {
             val seriesFiles: Array<FilePath>
 
             try {
-                seriesFiles = workspaceRootDir.list(getFile())
+                seriesFiles = workspaceRootDir.list(super.file)
             } catch (e: Exception) {
                 LOGGER.log(Level.SEVERE, "Exception trying to retrieve series files", e)
                 return emptyList()
             }
 
             if (ArrayUtils.isEmpty(seriesFiles)) {
-                LOGGER.info("No plot data file found: " + getFile())
+                LOGGER.info("No plot data file found: " + super.file)
                 return emptyList()
             }
 
             try {
                 if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                    LOGGER.log(DEFAULT_LOG_LEVEL, "Loading plot series data from: " + getFile())
+                    LOGGER.log(DEFAULT_LOG_LEVEL, "Loading plot series data from: " + super.file)
                 }
 
                 inputStream = seriesFiles[0].read()
@@ -201,7 +201,7 @@ class XMLSeries : Series {
             }
 
             if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                LOGGER.log(DEFAULT_LOG_LEVEL, "Loaded XML Plot file: " + getFile())
+                LOGGER.log(DEFAULT_LOG_LEVEL, "Loaded XML Plot file: " + super.file)
             }
 
             val xpath = XPathFactory.newInstance().newXPath()
@@ -305,7 +305,7 @@ class XMLSeries : Series {
      * Add a given value to the plotPoints of results. This encapsulates some
      * otherwise duplicate logic due to nodeset/!nodeset
      */
-    private fun addValueToList(plotPoints: MutableList<PlotPoint>, label: String,
+    private fun addValueToList(plotPoints: MutableList<PlotPoint>, label: String?,
                                nodeValue: Any, buildNumber: Int) {
 
         val value = nodeToString(nodeValue)
