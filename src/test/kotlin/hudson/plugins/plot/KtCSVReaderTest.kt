@@ -62,8 +62,8 @@ class KtCSVReaderTest : KtSeriesTestCase() {
             var nextLine: Array<String>
             // read each line of the CSV file and add to rawPlotData
             var lineNum = 0
-            while (csvreader.readNext() != null) {
-                nextLine = csvreader.readNext()
+            nextLine = csvreader.readNext()
+            while (nextLine != null) {
                 // for some reason csv reader returns an empty line sometimes.
                 if (nextLine.size == 1 && nextLine[0].length == 0) {
                     break
@@ -81,6 +81,7 @@ class KtCSVReaderTest : KtSeriesTestCase() {
                     assertTrue(msg.toString(), COLUMNS[0] == nextLine.size)
                 }
                 ++lineNum
+                nextLine = csvreader.readNext()
             }
             assertTrue("Line count is not equal " + lineNum + " expected " + LINES[0], LINES[0] == lineNum)
         } catch (e: IOException) {
