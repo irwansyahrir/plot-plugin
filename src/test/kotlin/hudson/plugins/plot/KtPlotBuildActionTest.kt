@@ -13,13 +13,13 @@ import java.util.concurrent.*
 class KtPlotBuildActionTest {
 
     @get:Rule
-    var r = JenkinsRule()
+    var jenkinsRule = JenkinsRule()
     private var plotBuildAction: PlotBuildAction? = null
 
     @Before
     @Throws(Exception::class)
     fun setUp() {
-        val run = r.buildAndAssertSuccess(r.createFreeStyleProject())
+        val run = jenkinsRule.buildAndAssertSuccess(jenkinsRule.createFreeStyleProject())
         val plots = ArrayList<Plot>()
         for (i in 0..29) {
             val p = Plot()
@@ -62,7 +62,7 @@ class KtPlotBuildActionTest {
                                 // simulate ConcurrentModificationException
                                 for (p in plots!!) {
                                     if (plots!!.size > 0) {
-                                        plots!!.remove(p)  //MutableList can remote item
+                                        plots!!.remove(p)  //MutableList can remove item
                                     }
                                 }
                             }

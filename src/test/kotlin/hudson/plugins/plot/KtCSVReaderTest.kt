@@ -32,11 +32,11 @@ class KtCSVReaderTest : KtSeriesTestCase() {
 
     fun testCSVReader() {
         // first create a FilePath to load the test Properties file.
-        val workspaceDirFile = File("target/test-classes/")
-        val workspaceRootDir = FilePath(workspaceDirFile)
+        val csvFolder = File("target/test-classes/")
+        val csvFilePath = FilePath(csvFolder)
 
-        LOGGER.info("workspace File path: " + workspaceDirFile.absolutePath)
-        LOGGER.info("workspace Dir path: " + workspaceRootDir.name)
+        LOGGER.info("workspace File path: " + csvFolder.absolutePath)
+        LOGGER.info("workspace Dir path: " + csvFilePath.name)
 
         var csvreader: CSVReader? = null
         var `in`: InputStream? = null
@@ -44,10 +44,10 @@ class KtCSVReaderTest : KtSeriesTestCase() {
 
         val seriesFiles: Array<FilePath>?
         try {
-            seriesFiles = workspaceRootDir.list(FILES[0])
+            seriesFiles = csvFilePath.list(FILES[0])
 
             if (seriesFiles != null && seriesFiles.size < 1) {
-                LOGGER.info("No plot data file found: " + workspaceRootDir.name + " " + FILES[0])
+                LOGGER.info("No plot data file found: " + csvFilePath.name + " " + FILES[0])
                 assertFalse(true)
             }
 

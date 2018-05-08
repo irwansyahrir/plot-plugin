@@ -27,33 +27,29 @@ class KtCSVSeriesTest : KtSeriesTestCase() {
     }
 
     fun testCSVSeriesWithNoExclusions() {
-        // first create a FilePath to load the test Properties file.
-        val workspaceDirFile = File("target/test-classes/")
-        val workspaceRootDir = FilePath(workspaceDirFile)
+        val csvFolders = File("target/test-classes/")
+        val csvFilePath = FilePath(csvFolders)
 
-        LOGGER.info("workspace File path: " + workspaceDirFile.absolutePath)
-        LOGGER.info("workspace Dir path: " + workspaceRootDir.name)
+        LOGGER.info("workspace File path: " + csvFolders.absolutePath)
+        LOGGER.info("workspace Dir path: " + csvFilePath.name)
 
         // Check the number of columns
         var columns = -1
-
         try {
-            columns = getNumColumns(workspaceRootDir, FILES[0])
+            columns = getNumColumns(csvFilePath, FILES[0])
         } catch (e: IOException) {
             TestCase.assertFalse(true)
         } catch (e: InterruptedException) {
             TestCase.assertFalse(true)
         }
 
-        // Create a new CSV series.
+
         val series = CSVSeries(FILES[0], "http://localhost:8080/%name%/%index%/", "OFF", "", false)
 
         LOGGER.info("Created series " + series.toString())
-        // test the basic subclass properties.
         testSeriesProperties(series, FILES[0], "", "csv")
 
-        // load the series.
-        val points = series.loadSeries(workspaceRootDir, 0, System.out)
+        val points = series.loadSeries(csvFilePath, 0, System.out)
         LOGGER.info("Got " + points!!.size + " plot points")
         testPlotPoints(points, columns)
 
@@ -64,24 +60,21 @@ class KtCSVSeriesTest : KtSeriesTestCase() {
     }
 
     fun testCSVSeriesWithTrailingSemicolonDoesntCreateExtraneousPoint() {
-        // first create a FilePath to load the test Properties file.
-        val workspaceDirFile = File("target/test-classes/")
-        val workspaceRootDir = FilePath(workspaceDirFile)
+        val csvFolders = File("target/test-classes/")
+        val csvFilePath = FilePath(csvFolders)
         val file = "test_trailing_semicolon.csv"
 
-        LOGGER.info("workspace File path: " + workspaceDirFile.absolutePath)
-        LOGGER.info("workspace Dir path: " + workspaceRootDir.name)
+        LOGGER.info("workspace File path: " + csvFolders.absolutePath)
+        LOGGER.info("workspace Dir path: " + csvFilePath.name)
 
-        // Create a new CSV series.
         val series = CSVSeries(file,
                 "http://localhost:8080/%name%/%index%/", "OFF", "", false)
 
         LOGGER.info("Created series " + series.toString())
-        // test the basic subclass properties.
         testSeriesProperties(series, file, "", "csv")
 
-        // load the series.
-        val points = series.loadSeries(workspaceRootDir, 0, System.out)
+        val points = series.loadSeries(csvFilePath, 0, System.out)
+
         LOGGER.info("Got " + points!!.size + " plot points")
         testPlotPoints(points, 8)
     }
