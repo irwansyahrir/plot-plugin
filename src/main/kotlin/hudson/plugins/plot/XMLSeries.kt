@@ -41,15 +41,14 @@ class XMLSeries : Series {
         @Transient
         private val Q_NAME_MAP: Map<String, QName>
 
-        //Fill out the qName map for easy reference.
         init {
-            val tempMap = HashMap<String, QName>()
-            tempMap["BOOLEAN"] = XPathConstants.BOOLEAN
-            tempMap["NODE"] = XPathConstants.NODE
-            tempMap["NODESET"] = XPathConstants.NODESET
-            tempMap["NUMBER"] = XPathConstants.NUMBER
-            tempMap["STRING"] = XPathConstants.STRING
-            Q_NAME_MAP = Collections.unmodifiableMap(tempMap)
+            Q_NAME_MAP = hashMapOf(
+                    "BOOLEAN" to XPathConstants.BOOLEAN,
+                    "NODE" to XPathConstants.NODE,
+                    "NODESET" to XPathConstants.NODESET,
+                    "NUMBER" to XPathConstants.NUMBER,
+                    "STRING" to XPathConstants.STRING
+            )
         }
     }
 
@@ -80,16 +79,6 @@ class XMLSeries : Series {
         this.nodeTypeString = nodeType
         this.nodeType = Q_NAME_MAP[nodeType]
         this.baseUrl = url
-    }
-
-    private fun readResolve(): Any {
-        // Set nodeType when deserialized
-        nodeType = Q_NAME_MAP[nodeTypeString]
-        return this
-    }
-
-    fun getNodeType(): String {
-        return nodeTypeString
     }
 
     /**
