@@ -45,7 +45,7 @@ abstract class Series : AbstractDescribableImpl<Series> {
     /**
      * Data series legend label. Optional.
      */
-    var label: String? = null
+    var label: String = ""
         protected set
 
     /**
