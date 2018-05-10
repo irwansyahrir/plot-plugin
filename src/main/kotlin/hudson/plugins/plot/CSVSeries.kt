@@ -31,13 +31,25 @@ import org.kohsuke.stapler.StaplerRequest
  *
  * @author Allen Reese
  */
-class CSVSeries @DataBoundConstructor
-constructor(file: String,
-            /**
-             * Url to use as a base for mapping points.
-             */
-            val url: String?, inclusionFlag: String?,
-            exclusionValues: String?, val displayTableFlag: Boolean) : Series(file, "", "csv") {
+
+enum class InclusionFlag {
+    OFF, INCLUDE_BY_STRING, EXCLUDE_BY_STRING, INCLUDE_BY_COLUMN, EXCLUDE_BY_COLUMN
+}
+
+class CSVSeries : Series {
+
+    companion object {
+        @Transient
+        private val LOGGER = Logger.getLogger(CSVSeries::class.java.name)
+
+        // Debugging hack, so I don't have to change FINE/INFO...
+        @Transient
+        private val DEFAULT_LOG_LEVEL = Level.FINEST
+
+        @Transient
+        private val PATTERN_COMMA = Pattern.compile(",")
+    }
+
 
     /**
      * Set for excluding values by column name
@@ -52,7 +64,7 @@ constructor(file: String,
     /**
      * Flag controlling how values are excluded.
      */
-    private var inclusionFlag: InclusionFlag? = InclusionFlag.OFF
+    private var inclusionFlag: InclusionFlag?
 
     /**
      * Comma separated list of columns to exclude.
@@ -60,12 +72,17 @@ constructor(file: String,
     var exclusionValues: String? = null
         private set
 
-    enum class InclusionFlag {
-        OFF, INCLUDE_BY_STRING, EXCLUDE_BY_STRING, INCLUDE_BY_COLUMN, EXCLUDE_BY_COLUMN
-    }
+    /**
+     * Url to use as a base for mapping points.
+     */
+    val url: String?
+    val displayTableFlag: Boolean
 
-    init {
 
+    @DataBoundConstructor constructor(file: String, url: String?, inclusionFlag: String?, exclusionValues: String?, displayTableFlag: Boolean) : super(file, "", "csv") {
+        this.url = url
+        this.displayTableFlag = displayTableFlag
+        this.inclusionFlag = InclusionFlag.OFF
         if (exclusionValues == null) {
             this.inclusionFlag = InclusionFlag.OFF
         } else {
@@ -123,17 +140,16 @@ constructor(file: String,
             // load existing plot file
             inputReader = InputStreamReader(`in`!!, Charset.defaultCharset().name())
             reader = CSVReader(inputReader)
-            var nextLine: Array<String>
 
             // save the header line to use it for the plot labels.
             val headerLine = reader.readNext()
 
             // read each line of the CSV file and add to rawPlotData
             var lineNum = 0
-            nextLine = reader.readNext()
-            while (nextLine != null) {
+            var nextLine : Array<out String?> = reader.readNext()
+            while (nextLine.size > 1) {
                 // skip empty lines
-                if (nextLine.size == 1 && nextLine[0].length == 0) {
+                if (nextLine.size == 1 && nextLine[0]!!.length == 0) {
                     continue
                 }
 
@@ -145,7 +161,7 @@ constructor(file: String,
                         continue
                     }
 
-                    yvalue = nextLine[index]
+                    yvalue = nextLine[index]!!
 
                     // empty value, caused by e.g. trailing comma in CSV
                     if (yvalue.trim { it <= ' ' }.length == 0) {
@@ -216,16 +232,16 @@ constructor(file: String,
 
         val retVal: Boolean
         when (inclusionFlag) {
-            CSVSeries.InclusionFlag.INCLUDE_BY_STRING ->
+            InclusionFlag.INCLUDE_BY_STRING ->
                 // if the set contains it, don't exclude it.
                 retVal = !strExclusionSet!!.contains(label)
-            CSVSeries.InclusionFlag.EXCLUDE_BY_STRING ->
+            InclusionFlag.EXCLUDE_BY_STRING ->
                 // if the set doesn't contain it, exclude it.
                 retVal = strExclusionSet!!.contains(label)
-            CSVSeries.InclusionFlag.INCLUDE_BY_COLUMN ->
+            InclusionFlag.INCLUDE_BY_COLUMN ->
                 // if the set contains it, don't exclude it.
                 retVal = !colExclusionSet!!.contains(Integer.valueOf(index))
-            CSVSeries.InclusionFlag.EXCLUDE_BY_COLUMN ->
+            InclusionFlag.EXCLUDE_BY_COLUMN ->
                 // if the set doesn't contain it, don't exclude it.
                 retVal = colExclusionSet!!.contains(Integer.valueOf(index))
             else -> retVal = false
@@ -254,24 +270,24 @@ constructor(file: String,
         }
 
         when (inclusionFlag) {
-            CSVSeries.InclusionFlag.INCLUDE_BY_STRING, CSVSeries.InclusionFlag.EXCLUDE_BY_STRING -> strExclusionSet = HashSet()
-            CSVSeries.InclusionFlag.INCLUDE_BY_COLUMN, CSVSeries.InclusionFlag.EXCLUDE_BY_COLUMN -> colExclusionSet = HashSet()
+            InclusionFlag.INCLUDE_BY_STRING, InclusionFlag.EXCLUDE_BY_STRING -> strExclusionSet = mutableSetOf()
+            InclusionFlag.INCLUDE_BY_COLUMN, InclusionFlag.EXCLUDE_BY_COLUMN -> colExclusionSet = mutableSetOf()
             else -> LOGGER.log(Level.SEVERE, "Failed to initialize columns exclusions set.")
         }
 
-        for (str in PAT_COMMA.split(exclusionValues)) {
+        for (str in PATTERN_COMMA.split(exclusionValues)) {
             if (str == null || str.length <= 0) {
                 continue
             }
 
             when (inclusionFlag) {
-                CSVSeries.InclusionFlag.INCLUDE_BY_STRING, CSVSeries.InclusionFlag.EXCLUDE_BY_STRING -> {
+                InclusionFlag.INCLUDE_BY_STRING, InclusionFlag.EXCLUDE_BY_STRING -> {
                     if (LOGGER.isLoggable(Level.FINEST)) {
                         LOGGER.finest(inclusionFlag.toString() + " CSV Column: " + str)
                     }
                     strExclusionSet!!.add(str)
                 }
-                CSVSeries.InclusionFlag.INCLUDE_BY_COLUMN, CSVSeries.InclusionFlag.EXCLUDE_BY_COLUMN -> try {
+                InclusionFlag.INCLUDE_BY_COLUMN, InclusionFlag.EXCLUDE_BY_COLUMN -> try {
                     if (LOGGER.isLoggable(Level.FINEST)) {
                         LOGGER.finest(inclusionFlag.toString() + " CSV Column: " + str)
                     }
@@ -299,15 +315,5 @@ constructor(file: String,
         override fun newInstance(req: StaplerRequest, formData: JSONObject): Series? {
             return SeriesFactory.createSeries(formData, req)
         }
-    }
-
-    companion object {
-        @Transient
-        private val LOGGER = Logger.getLogger(CSVSeries::class.java.name)
-        // Debugging hack, so I don't have to change FINE/INFO...
-        @Transient
-        private val DEFAULT_LOG_LEVEL = Level.FINEST
-        @Transient
-        private val PAT_COMMA = Pattern.compile(",")
     }
 }
