@@ -9,6 +9,7 @@ import au.com.bytecode.opencsv.CSVReader
 import hudson.Extension
 import hudson.FilePath
 import hudson.model.Descriptor
+import mu.KotlinLogging
 import net.sf.json.JSONObject
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.ArrayUtils
@@ -35,20 +36,10 @@ enum class InclusionFlag {
     OFF, INCLUDE_BY_STRING, EXCLUDE_BY_STRING, INCLUDE_BY_COLUMN, EXCLUDE_BY_COLUMN
 }
 
+private val logger = KotlinLogging.logger{}
+private val PATTERN_COMMA = Pattern.compile(",")
+
 class CSVSeries : Series {
-
-    companion object {
-        @Transient
-        private val LOGGER = Logger.getLogger(CSVSeries::class.java.name)
-
-        // Debugging hack, so I don't have to change FINE/INFO...
-        @Transient
-        private val DEFAULT_LOG_LEVEL = Level.FINEST
-
-        @Transient
-        private val PATTERN_COMMA = Pattern.compile(",")
-    }
-
 
     /**
      * Set for excluding values by column name
@@ -100,7 +91,7 @@ class CSVSeries : Series {
      * Load the series from a properties file.
      */
     override fun loadSeries(workspaceRootDir: FilePath,
-                            buildNumber: Int, logger: PrintStream): List<PlotPoint> {
+                            buildNumber: Int, printStream: PrintStream): List<PlotPoint> {
         var reader: CSVReader? = null
         var `in`: InputStream? = null
         var inputReader: InputStreamReader? = null
@@ -112,29 +103,28 @@ class CSVSeries : Series {
             try {
                 seriesFiles = workspaceRootDir.list(file)
             } catch (e: Exception) {
-                LOGGER.log(Level.SEVERE, "Exception trying to retrieve series files", e)
+                logger.error {"$e when trying to retrieve series files"}
                 return emptyList()
             }
 
             if (ArrayUtils.isEmpty(seriesFiles)) {
-                LOGGER.info("No plot data file found: " + workspaceRootDir.name
-                        + " " + file)
+                logger.info {"No plot data file found: ${workspaceRootDir.name} $file"}
                 return emptyList()
             }
 
             try {
-                if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                    LOGGER.log(DEFAULT_LOG_LEVEL, "Loading plot series data from: $file")
+                if (logger.isTraceEnabled) {
+                    logger.trace { "Loading plot series data from: $file" }
                 }
 
                 `in` = seriesFiles[0].read()
             } catch (e: Exception) {
-                LOGGER.log(Level.SEVERE, "Exception reading plot series data from " + seriesFiles[0], e)
+                logger.error { "Exception reading plot series data from ${seriesFiles[0]}" }
                 return emptyList()
             }
 
-            if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                LOGGER.log(DEFAULT_LOG_LEVEL, "Loaded CSV Plot file: $file")
+            if (logger.isTraceEnabled) {
+                logger.trace { "Loaded CSV Plot file: $file" }
             }
 
             // load existing plot file
@@ -184,15 +174,13 @@ class CSVSeries : Series {
                     if (!excludePoint(label, index)) {
                         val point = PlotPoint(yvalue, getUrl(url,
                                 label, index, buildNumber), label)
-                        if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                            LOGGER.log(DEFAULT_LOG_LEVEL, "CSV Point: [" + index
-                                    + ":" + lineNum + "]" + point)
+                        if (logger.isTraceEnabled) {
+                            logger.trace { "CSV Point: [$index:$lineNum]$point" }
                         }
                         ret.add(point)
                     } else {
-                        if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                            LOGGER.log(DEFAULT_LOG_LEVEL, "excluded CSV Column: "
-                                    + index + " : " + label)
+                        if (logger.isTraceEnabled) {
+                            logger.trace { "excluded CSV Column: $index : $label" }
                         }
                     }
                 }
@@ -202,13 +190,13 @@ class CSVSeries : Series {
 
             return ret
         } catch (ioe: IOException) {
-            LOGGER.log(Level.SEVERE, "Exception loading series", ioe)
+            logger.error { "$ioe when loading series" }
         } finally {
             if (reader != null) {
                 try {
                     reader.close()
                 } catch (e: IOException) {
-                    LOGGER.log(Level.SEVERE, "Failed to close series reader", e)
+                    logger.error { "$e failed to close series reader" }
                 }
 
             }
@@ -247,9 +235,8 @@ class CSVSeries : Series {
             else -> retVal = false
         }
 
-        if (LOGGER.isLoggable(Level.FINEST)) {
-            LOGGER.finest((if (retVal) "excluded" else "included")
-                    + " CSV Column: " + index + " : " + label)
+        if (logger.isTraceEnabled) {
+            logger.trace { "${if (retVal) "excluded" else "included"} CSV Column: $index : $label" }
         }
 
         return retVal
@@ -272,7 +259,7 @@ class CSVSeries : Series {
         when (inclusionFlag) {
             InclusionFlag.INCLUDE_BY_STRING, InclusionFlag.EXCLUDE_BY_STRING -> strExclusionSet = mutableSetOf()
             InclusionFlag.INCLUDE_BY_COLUMN, InclusionFlag.EXCLUDE_BY_COLUMN -> colExclusionSet = mutableSetOf()
-            else -> LOGGER.log(Level.SEVERE, "Failed to initialize columns exclusions set.")
+            else -> logger.error { "Failed to initialize columns exclusions set." }
         }
 
         for (str in PATTERN_COMMA.split(exclusionValues)) {
@@ -282,21 +269,21 @@ class CSVSeries : Series {
 
             when (inclusionFlag) {
                 InclusionFlag.INCLUDE_BY_STRING, InclusionFlag.EXCLUDE_BY_STRING -> {
-                    if (LOGGER.isLoggable(Level.FINEST)) {
-                        LOGGER.finest(inclusionFlag.toString() + " CSV Column: " + str)
+                    if (logger.isTraceEnabled) {
+                        logger.trace { "${inclusionFlag.toString()} CSV Column: $str" }
                     }
                     strExclusionSet!!.add(str)
                 }
                 InclusionFlag.INCLUDE_BY_COLUMN, InclusionFlag.EXCLUDE_BY_COLUMN -> try {
-                    if (LOGGER.isLoggable(Level.FINEST)) {
-                        LOGGER.finest(inclusionFlag.toString() + " CSV Column: " + str)
+                    if (logger.isTraceEnabled) {
+                        logger.trace { "${inclusionFlag.toString()} CSV Column: $str" }
                     }
                     colExclusionSet!!.add(Integer.valueOf(str))
                 } catch (nfe: NumberFormatException) {
-                    LOGGER.log(Level.SEVERE, "Exception converting to integer", nfe)
+                    logger.error { "$nfe when converting to interger" }
                 }
 
-                else -> LOGGER.log(Level.SEVERE, "Failed to identify columns exclusions.")
+                else -> logger.error { "Failed to identify columns exclusions." }
             }
         }
     }

@@ -198,12 +198,13 @@ class MatrixPlotPublisher : AbstractPlotPublisher() {
          * Called when the user saves the project configuration.
          */
         @Throws(hudson.model.Descriptor.FormException::class)
-        override fun newInstance(req: StaplerRequest, formData: JSONObject): Publisher {
-            val publisher = MatrixPlotPublisher()
-            val plots = ArrayList<Plot>()
-            for (data in SeriesFactory.getArray(formData.get("plots"))) {
-                plots.add(bindPlot(data as JSONObject, req))
+        override fun newInstance(request: StaplerRequest, formData: JSONObject): Publisher {
+            val plots = mutableListOf<Plot>()
+            SeriesFactory.getArray(formData.get("plots")).forEach { data ->
+                plots.add(bindPlot(data as JSONObject, request))
             }
+
+            val publisher = MatrixPlotPublisher()
             publisher.plots = plots
             return publisher
         }
