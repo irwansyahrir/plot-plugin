@@ -6,6 +6,7 @@
 package hudson.plugins.plot
 
 import hudson.FilePath
+import org.assertj.core.api.Assertions.assertThat
 import java.io.File
 
 /**
@@ -28,6 +29,15 @@ class KtPropertiesSeriesTest : KtSeriesTestCase() {
         val points = propSeries.loadSeries(propertiesFilePath, 0, System.err)
 
         testPlotPoints(points, 1)
+    }
+
+    fun testNonExistentPropertiesFile() {
+        val propertiesFileDir = File("target/test-classes/")
+        val propertiesFilePath = FilePath(propertiesFileDir)
+
+        val propSeries = PropertiesSeries("whatever", "label")
+        var points = propSeries.loadSeries(propertiesFilePath, 0, System.err)
+        assertThat(points).isEmpty()
     }
 
     companion object {

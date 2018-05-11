@@ -9,67 +9,69 @@ package hudson.plugins.plot
 import hudson.Extension
 import hudson.FilePath
 import hudson.model.Descriptor
-import java.io.InputStream
-import java.io.PrintStream
-import java.util.ArrayList
-import java.util.Properties
-import java.util.logging.Level
-import java.util.logging.Logger
+import mu.KotlinLogging
 import net.sf.json.JSONObject
 import org.apache.commons.io.IOUtils
-import org.apache.commons.lang.ArrayUtils
 import org.kohsuke.stapler.DataBoundConstructor
 import org.kohsuke.stapler.StaplerRequest
+import java.io.PrintStream
+import java.util.*
 
 /**
  * @author Allen Reese
  */
+
+private val logger = KotlinLogging.logger{}
+
 class PropertiesSeries : Series {
 
-    @DataBoundConstructor constructor(file: String, label: String?) : super(file, label, "properties")
+    @DataBoundConstructor
+    constructor(file: String, label: String?) : super(file, label, "properties")
 
     /**
      * Load the series from a properties file.
      */
-    override fun loadSeries(workspaceRootDir: FilePath, buildNumber: Int,
-                            logger: PrintStream): List<PlotPoint> {
-        var `in`: InputStream? = null
+    override fun loadSeries(filePath: FilePath, buildNumber: Int, printStream: PrintStream): List<PlotPoint> {
+
         val seriesFiles: Array<FilePath>
-
         try {
-            seriesFiles = workspaceRootDir.list(file)
+            seriesFiles = filePath.list(file)
         } catch (e: Exception) {
-            LOGGER.log(Level.SEVERE,
-                    "Exception trying to retrieve series files", e)
+            logger.error(e) { "$e when trying to retrieve series files" }
             return emptyList()
         }
 
-        if (ArrayUtils.isEmpty(seriesFiles)) {
-            logger.println("No plot data file found: $file")
+        if (seriesFiles.isEmpty()) {
+            printStream.println("No plot data file found: $file")
             return emptyList()
         }
 
-        try {
-            `in` = seriesFiles[0].read()
-            logger.println("Saving plot series data from: " + seriesFiles[0])
-            val properties = Properties()
-            properties.load(`in`)
-            val yvalue = properties.getProperty("YVALUE")
+        return try {
+            val properties = getProperties(seriesFiles, printStream)
+            val yValue = properties.getProperty("YVALUE")
             val url = properties.getProperty("URL", "")
-            if (yvalue == null || url == null) {
-                logger.println("Not creating point with null values: y="
-                        + yvalue + " label=" + label + " url=" + url)
-                return emptyList()
+            when {
+                yValue == null || url == null -> {
+                    printStream.println("Not creating point with null values: y=$yValue label=$label url=$url")
+                    emptyList()
+                }
+                else -> listOf(PlotPoint(yValue, url, label))
             }
-            val series = ArrayList<PlotPoint>()
-            series.add(PlotPoint(yvalue, url, label))
-            return series
         } catch (e: Exception) {
-            LOGGER.log(Level.SEVERE, "Exception reading plot series data from " + seriesFiles[0], e)
-            return emptyList()
-        } finally {
-            IOUtils.closeQuietly(`in`)
+            logger.error(e) { "$e when reading plot series data from ${seriesFiles[0]}" }
+            emptyList()
         }
+    }
+
+    private fun getProperties(seriesFiles: Array<FilePath>, logger: PrintStream): Properties {
+        logger.println("Saving plot series data from: " + seriesFiles[0])
+        val inputStream = seriesFiles[0].read()
+        val properties = Properties()
+        properties.load(inputStream)
+
+        IOUtils.closeQuietly(inputStream)
+
+        return properties
     }
 
     override fun getDescriptor(): Descriptor<Series> {
@@ -86,10 +88,5 @@ class PropertiesSeries : Series {
         override fun newInstance(req: StaplerRequest, formData: JSONObject): Series? {
             return SeriesFactory.createSeries(formData, req)
         }
-    }
-
-    companion object {
-        @Transient
-        private val LOGGER = Logger.getLogger(PropertiesSeries::class.java.name)
     }
 }
