@@ -20,20 +20,18 @@ import org.kohsuke.stapler.StaplerRequest
  * @author Nigel Daley
  * @author Allen Reese
  */
+
+private val NAME_PATTERN = Pattern.compile("%name%")
+private val INDEX_PATTERN = Pattern.compile("%index%")
+private val BUILD_NUMBER_PATTERN = Pattern.compile("%build%")
+
+
 abstract class Series : AbstractDescribableImpl<Series> {
 
     protected constructor(file: String, label: String?, fileType: String) : super() {
         this.file = file
         this.label = label ?: Messages.Plot_Missing()
         this.fileType = fileType
-    }
-
-    companion object {
-        @Transient
-        private val NAME_PATTERN = Pattern.compile("%name%")
-        @Transient
-        private val INDEX_PATTERN = Pattern.compile("%index%")
-        private val BUILD_NUMBER_PATTERN = Pattern.compile("%build%")
     }
 
     /**

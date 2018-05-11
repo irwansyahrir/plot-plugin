@@ -8,6 +8,7 @@ package hudson.plugins.plot
 import hudson.Extension
 import hudson.FilePath
 import hudson.model.Descriptor
+import mu.KotlinLogging
 import net.sf.json.JSONObject
 import org.apache.commons.io.IOUtils
 import org.kohsuke.stapler.DataBoundConstructor
@@ -18,8 +19,6 @@ import org.xml.sax.InputSource
 import java.io.InputStream
 import java.io.PrintStream
 import java.util.*
-import java.util.logging.Level
-import java.util.logging.Logger
 import javax.xml.namespace.QName
 import javax.xml.xpath.XPathConstants
 import javax.xml.xpath.XPathExpressionException
@@ -30,27 +29,18 @@ import javax.xml.xpath.XPathFactory
  *
  * @author Allen Reese
  */
+
+private val logger = KotlinLogging.logger{}
+
+private val Q_NAME_MAP = hashMapOf(
+        "BOOLEAN"   to XPathConstants.BOOLEAN,
+        "NODE"      to XPathConstants.NODE,
+        "NODESET"   to XPathConstants.NODESET,
+        "NUMBER"    to XPathConstants.NUMBER,
+        "STRING"    to XPathConstants.STRING
+)
+
 class XMLSeries : Series {
-    companion object {
-        @Transient
-        private val LOGGER = Logger.getLogger(XMLSeries::class.simpleName)
-        // Debugging hack, so I don't have to change FINE/INFO...
-        @Transient
-        private val DEFAULT_LOG_LEVEL = Level.INFO
-
-        @Transient
-        private val Q_NAME_MAP: Map<String, QName>
-
-        init {
-            Q_NAME_MAP = hashMapOf(
-                    "BOOLEAN" to XPathConstants.BOOLEAN,
-                    "NODE" to XPathConstants.NODE,
-                    "NODESET" to XPathConstants.NODESET,
-                    "NUMBER" to XPathConstants.NUMBER,
-                    "STRING" to XPathConstants.STRING
-            )
-        }
-    }
 
     /**
      * XPath to select for values
@@ -150,7 +140,7 @@ class XMLSeries : Series {
      */
     override fun loadSeries(workspaceRootDir: FilePath,
                             buildNumber: Int,
-                            logger: PrintStream): List<PlotPoint> {
+                            printStream: PrintStream): List<PlotPoint> {
 
         try {
             val seriesFiles: Array<FilePath> = retrieveSeriesFiles(workspaceRootDir)
@@ -160,12 +150,9 @@ class XMLSeries : Series {
 
             var inputSource: InputSource? = getInputSource(seriesFiles) ?: return emptyList()
 
-            if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                LOGGER.log(DEFAULT_LOG_LEVEL, "NodeType $nodeTypeString : $nodeType")
-            }
-
-            if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                LOGGER.log(DEFAULT_LOG_LEVEL, "Loaded XML Plot file: " + super.file)
+            if (logger.isInfoEnabled) {
+                logger.info { "NodeType $nodeTypeString : $nodeType" }
+                logger.info { "Loaded XML Plot file: ${super.file}" }
             }
 
             val xpath = XPathFactory.newInstance().newXPath()
@@ -189,15 +176,15 @@ class XMLSeries : Series {
             }
             return returnedSeries
         } catch (e: XPathExpressionException) {
-            LOGGER.log(Level.SEVERE, "XPathExpressionException for XPath '$xpathString'", e)
+            logger.error { "XPathExpressionException for XPath ${xpathString} throws $e" }
         }
 
         return emptyList()
     }
 
     private fun addNodeListToSeries(series: MutableList<PlotPoint>, nodeList: NodeList, buildNumber: Int) {
-        if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-            LOGGER.log(DEFAULT_LOG_LEVEL, "Number of nodes: " + nodeList.length)
+        if (logger.isInfoEnabled) {
+            logger.info { "Number of nodes: ${nodeList.length}" }
         }
 
         for (i in 0 until nodeList.length) {
@@ -211,8 +198,8 @@ class XMLSeries : Series {
     private fun getSeriesForNodeset(xmlObject: Any?, buildNumber: Int): List<PlotPoint> {
         val nodeList = xmlObject as NodeList
 
-        if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-            LOGGER.log(DEFAULT_LOG_LEVEL, "Number of nodes: " + nodeList.length)
+        if (logger.isInfoEnabled) {
+            logger.info { "Number of nodes: ${nodeList.length}" }
         }
 
         for (i in 0 until nodeList.length) {
@@ -227,15 +214,15 @@ class XMLSeries : Series {
     private fun getInputSource(seriesFiles: Array<FilePath>): InputSource? {
         var inputStream : InputStream? = null
         try {
-            if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                LOGGER.log(DEFAULT_LOG_LEVEL, "Loading plot series data from: " + super.file)
+            if (logger.isInfoEnabled) {
+                logger.info { "Loading plot series data from: ${super.file}" }
             }
 
             inputStream = seriesFiles[0].read()
             // load existing plot file
             return InputSource(inputStream)
         } catch (e: Exception) {
-            LOGGER.log(Level.SEVERE, "Exception reading plot series data from " + seriesFiles[0], e)
+            logger.error {"$e reading plot series data from ${seriesFiles[0]}"}
             IOUtils.closeQuietly(inputStream)
             return null
         }
@@ -248,12 +235,12 @@ class XMLSeries : Series {
         try {
             seriesFiles = workspaceRootDir.list(super.file)
         } catch (e: Exception) {
-            LOGGER.log(Level.SEVERE, "Exception trying to retrieve series files", e)
+            logger.error {"$e when trying to retrieve series files"}
             return emptyArray()
         }
 
         if (seriesFiles.isEmpty()) {
-            LOGGER.info("No plot data file found: " + super.file)
+            logger.info {"No plot data file found: ${super.file}"}
             return emptyArray()
         }
 
@@ -316,14 +303,14 @@ class XMLSeries : Series {
         val value = nodeToString(nodeValue)
 
         if (value.isNotEmpty()) {
-            if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                LOGGER.log(DEFAULT_LOG_LEVEL, "Adding node: $label value: $value")
+            if (logger.isInfoEnabled) {
+                logger.info {"Adding node: $label value: $value"}
             }
             val pointUrl = getUrl(baseUrl, label, 0, buildNumber)
             return PlotPoint(value, pointUrl, label)
         } else {
-            if (LOGGER.isLoggable(DEFAULT_LOG_LEVEL)) {
-                LOGGER.log(DEFAULT_LOG_LEVEL, "Unable to add node: $label value: $nodeValue")
+            if (logger.isInfoEnabled) {
+                logger.info {"Unable to add node: $label value: $nodeValue"}
             }
             return null
         }
