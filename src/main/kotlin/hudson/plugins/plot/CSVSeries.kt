@@ -9,22 +9,21 @@ import au.com.bytecode.opencsv.CSVReader
 import hudson.Extension
 import hudson.FilePath
 import hudson.model.Descriptor
-import java.io.IOException
-import java.io.InputStream
-import java.io.InputStreamReader
-import java.io.PrintStream
-import java.nio.charset.Charset
-import java.util.ArrayList
-import java.util.HashSet
-import java.util.logging.Level
-import java.util.logging.Logger
-import java.util.regex.Pattern
 import net.sf.json.JSONObject
 import org.apache.commons.io.IOUtils
 import org.apache.commons.lang.ArrayUtils
 import org.apache.commons.lang.ObjectUtils
 import org.kohsuke.stapler.DataBoundConstructor
 import org.kohsuke.stapler.StaplerRequest
+import java.io.IOException
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.io.PrintStream
+import java.nio.charset.Charset
+import java.util.*
+import java.util.logging.Level
+import java.util.logging.Logger
+import java.util.regex.Pattern
 
 /**
  * Represents a plot data series configuration from an CSV file.
@@ -79,7 +78,8 @@ class CSVSeries : Series {
     val displayTableFlag: Boolean
 
 
-    @DataBoundConstructor constructor(file: String, url: String?, inclusionFlag: String?, exclusionValues: String?, displayTableFlag: Boolean) : super(file, "", "csv") {
+    @DataBoundConstructor constructor(file: String, url: String?, inclusionFlag: String?, exclusionValues: String?,
+                                      displayTableFlag: Boolean) : super(file, "", "csv") {
         this.url = url
         this.displayTableFlag = displayTableFlag
         this.inclusionFlag = InclusionFlag.OFF

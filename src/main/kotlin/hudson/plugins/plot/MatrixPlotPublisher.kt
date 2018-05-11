@@ -13,20 +13,23 @@ import hudson.model.BuildListener
 import hudson.tasks.BuildStepDescriptor
 import hudson.tasks.Publisher
 import hudson.util.FormValidation
-import java.io.IOException
-import java.util.ArrayList
-import java.util.Collections
-import java.util.HashMap
 import net.sf.json.JSONObject
 import org.apache.commons.lang.ObjectUtils
 import org.kohsuke.stapler.AncestorInPath
 import org.kohsuke.stapler.QueryParameter
 import org.kohsuke.stapler.StaplerRequest
+import java.io.IOException
+import java.util.*
 
 /**
  * @author lucinka
  */
 class MatrixPlotPublisher : AbstractPlotPublisher() {
+
+    companion object {
+        @Extension
+        val DESCRIPTOR = DescriptorImpl()
+    }
 
     @Transient
     private var plotsOfConfigurations: MutableMap<MatrixConfiguration, MutableList<Plot>> = HashMap()
@@ -49,14 +52,14 @@ class MatrixPlotPublisher : AbstractPlotPublisher() {
             plotsOfConfigurations = HashMap()
         }
 
-    fun urlGroupToOriginalGroup(urlGroup: String?, c: MatrixConfiguration): String {
+    fun urlGroupToOriginalGroup(urlGroup: String?, config: MatrixConfiguration): String {
         if (urlGroup == null || "nogroup" == urlGroup) {
             return "Plots"
         }
         if (groupMap.containsKey(urlGroup)) {
-            val plotList = ArrayList<Plot>()
+            val plotList = mutableListOf<Plot>()
             for (plot in groupMap[urlGroup]!!) {
-                if (ObjectUtils.equals(plot.getProject(), c)) {
+                if (ObjectUtils.equals(plot.project, config)) {
                     plotList.add(plot)
                 }
             }
@@ -71,11 +74,11 @@ class MatrixPlotPublisher : AbstractPlotPublisher() {
      * Returns all group names as the original user specified strings.
      */
     fun getOriginalGroups(configuration: MatrixConfiguration): List<String> {
-        val originalGroups = ArrayList<String>()
+        val originalGroups = mutableListOf<String>()
         for (urlGroup in groupMap.keys) {
             originalGroups.add(urlGroupToOriginalGroup(urlGroup, configuration))
         }
-        Collections.sort(originalGroups)
+        originalGroups.sort()
         return originalGroups
     }
 
@@ -86,46 +89,43 @@ class MatrixPlotPublisher : AbstractPlotPublisher() {
      */
     fun addPlot(plot: Plot) {
         val urlGroup = originalGroupToUrlEncodedGroup(plot.getGroup())
-        if (groupMap.containsKey(urlGroup)) {
-            val list = groupMap[urlGroup]!!
-            list.add(plot)
-        } else {
-            val list = ArrayList<Plot>()
-            list.add(plot)
-            groupMap[urlGroup] = list
+
+        when {
+            groupMap.containsKey(urlGroup) -> {
+                groupMap[urlGroup]!!.add(plot)
+            }
+            else -> groupMap[urlGroup] = mutableListOf(plot)
         }
-        if (plotsOfConfigurations[plot.project as MatrixConfiguration] == null) {
-            val list = ArrayList<Plot>()
-            list.add(plot)
-            plotsOfConfigurations[plot.project as MatrixConfiguration] = list
-        } else {
-            plotsOfConfigurations[plot.project as MatrixConfiguration]?.add(plot)
+
+        val config = plot.project as MatrixConfiguration
+        when {
+            plotsOfConfigurations[config] == null -> {
+                plotsOfConfigurations[config] = mutableListOf(plot)
+            }
+            else -> plotsOfConfigurations[config]?.add(plot)
         }
     }
 
     /**
      * Returns the entire list of plots managed by this object.
      */
-    fun getPlots(configuration: MatrixConfiguration): List<Plot> {
-        val p = plotsOfConfigurations[configuration]
-        return p ?: ArrayList()
+    fun getPlots(config: MatrixConfiguration): List<Plot> {
+        return plotsOfConfigurations[config] ?: mutableListOf()
     }
 
     /**
      * Returns the list of plots with the given group name. The given group must
      * be the URL friendly form of the group name.
      */
-    fun getPlots(urlGroup: String,
-                 configuration: MatrixConfiguration): List<Plot> {
+    fun getPlots(urlGroup: String, config: MatrixConfiguration): List<Plot> {
         val groupPlots = ArrayList<Plot>()
-        val p = groupMap[urlGroup]
-        if (p != null) {
-            for (plot in p) {
-                if (ObjectUtils.equals(plot.project, configuration)) {
-                    groupPlots.add(plot)
-                }
+
+        groupMap[urlGroup]?.forEach { plot ->
+            if (ObjectUtils.equals(plot.project, config)) {
+                groupPlots.add(plot)
             }
         }
+
         return groupPlots
     }
 
@@ -133,9 +133,10 @@ class MatrixPlotPublisher : AbstractPlotPublisher() {
      * Called by Jenkins.
      */
     override fun getProjectAction(project: AbstractProject<*, *>?): Action? {
-        return if (project is MatrixConfiguration) {
-            MatrixPlotAction(project as MatrixConfiguration?, this)
-        } else null
+        return when (project) {
+            is MatrixConfiguration -> MatrixPlotAction(project as MatrixConfiguration?, this)
+            else -> null
+        }
     }
 
     override fun prebuild(build: AbstractBuild<*, *>?, listener: BuildListener): Boolean {
@@ -208,9 +209,9 @@ class MatrixPlotPublisher : AbstractPlotPublisher() {
         }
 
         private fun bindPlot(data: JSONObject, req: StaplerRequest): Plot {
-            val p = req.bindJSON(Plot::class.java, data)
-            p.series = SeriesFactory.createSeriesList(data.get("series"), req)
-            return p
+            val plot = req.bindJSON(Plot::class.java, data)
+            plot.series = SeriesFactory.createSeriesList(data.get("series"), req)
+            return plot
         }
 
         /**
@@ -221,11 +222,5 @@ class MatrixPlotPublisher : AbstractPlotPublisher() {
                               @QueryParameter value: String): FormValidation {
             return FilePath.validateFileMask(project.getSomeWorkspace(), value)
         }
-    }
-
-    companion object {
-
-        @Extension
-        val DESCRIPTOR = DescriptorImpl()
     }
 }
