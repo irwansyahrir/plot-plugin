@@ -29,14 +29,12 @@ object SeriesFactory {
         formData = formData.getJSONObject("fileType")
         formData["file"] = file
         val type = formData.getString("value")
-        var typeClass: Class<out Series>? = null
 
-        if ("properties" == type) {
-            typeClass = PropertiesSeries::class.java
-        } else if ("csv" == type) {
-            typeClass = CSVSeries::class.java
-        } else if ("xml" == type) {
-            typeClass = XMLSeries::class.java
+        var typeClass: Class<out Series>? = null
+        when (type) {
+            "properties" -> typeClass = PropertiesSeries::class.java
+            "csv" -> typeClass = CSVSeries::class.java
+            "xml" -> typeClass = XMLSeries::class.java
         }
 
         return if (typeClass != null) req.bindJSON(typeClass, formData) else null

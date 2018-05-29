@@ -9,6 +9,7 @@ import au.com.bytecode.opencsv.CSVReader
 import hudson.Extension
 import hudson.FilePath
 import hudson.model.Descriptor
+import hudson.plugins.plot.InclusionFlag.*
 import mu.KotlinLogging
 import net.sf.json.JSONObject
 import org.apache.commons.io.IOUtils
@@ -22,8 +23,6 @@ import java.io.InputStreamReader
 import java.io.PrintStream
 import java.nio.charset.Charset
 import java.util.*
-import java.util.logging.Level
-import java.util.logging.Logger
 import java.util.regex.Pattern
 
 /**
@@ -73,11 +72,11 @@ class CSVSeries : Series {
                                       displayTableFlag: Boolean) : super(file, "", "csv") {
         this.url = url
         this.displayTableFlag = displayTableFlag
-        this.inclusionFlag = InclusionFlag.OFF
+        this.inclusionFlag = OFF
         if (exclusionValues == null) {
-            this.inclusionFlag = InclusionFlag.OFF
+            this.inclusionFlag = OFF
         } else {
-            this.inclusionFlag = InclusionFlag.valueOf(inclusionFlag!!)
+            this.inclusionFlag = valueOf(inclusionFlag!!)
             this.exclusionValues = exclusionValues
             loadExclusionSet()
         }
@@ -93,12 +92,10 @@ class CSVSeries : Series {
     override fun loadSeries(workspaceRootDir: FilePath,
                             buildNumber: Int, printStream: PrintStream): List<PlotPoint> {
         var reader: CSVReader? = null
-        var `in`: InputStream? = null
+        var inputStream: InputStream? = null
         var inputReader: InputStreamReader? = null
 
         try {
-            val ret = ArrayList<PlotPoint>()
-
             val seriesFiles: Array<FilePath>
             try {
                 seriesFiles = workspaceRootDir.list(file)
@@ -117,7 +114,7 @@ class CSVSeries : Series {
                     logger.trace { "Loading plot series data from: $file" }
                 }
 
-                `in` = seriesFiles[0].read()
+                inputStream = seriesFiles[0].read()
             } catch (e: Exception) {
                 logger.error { "Exception reading plot series data from ${seriesFiles[0]}" }
                 return emptyList()
@@ -128,67 +125,14 @@ class CSVSeries : Series {
             }
 
             // load existing plot file
-            inputReader = InputStreamReader(`in`!!, Charset.defaultCharset().name())
+            inputReader = InputStreamReader(inputStream!!, Charset.defaultCharset().name())
             reader = CSVReader(inputReader)
 
             // save the header line to use it for the plot labels.
             val headerLine = reader.readNext()
 
-            // read each line of the CSV file and add to rawPlotData
-            var lineNum = 0
-            var nextLine : Array<out String?> = reader.readNext()
-            while (nextLine.size > 1) {
-                // skip empty lines
-                if (nextLine.size == 1 && nextLine[0]!!.length == 0) {
-                    continue
-                }
+            return getSeriesFromCSVLines(reader, headerLine, buildNumber)
 
-                for (index in nextLine.indices) {
-                    val yvalue: String
-                    var label: String? = null
-
-                    if (index > nextLine.size) {
-                        continue
-                    }
-
-                    yvalue = nextLine[index]!!
-
-                    // empty value, caused by e.g. trailing comma in CSV
-                    if (yvalue.trim { it <= ' ' }.length == 0) {
-                        continue
-                    }
-
-                    if (index < headerLine.size) {
-                        label = headerLine[index]
-                    }
-
-                    if (label == null || label.length <= 0) {
-                        // if there isn't a label, use the index as the label
-                        label = "" + index
-                    }
-
-                    // LOGGER.finest("Loaded point: " + point);
-
-                    // create a new point with the yvalue from the csv file and
-                    // url from the URL_index in the properties file.
-                    if (!excludePoint(label, index)) {
-                        val point = PlotPoint(yvalue, getUrl(url,
-                                label, index, buildNumber), label)
-                        if (logger.isTraceEnabled) {
-                            logger.trace { "CSV Point: [$index:$lineNum]$point" }
-                        }
-                        ret.add(point)
-                    } else {
-                        if (logger.isTraceEnabled) {
-                            logger.trace { "excluded CSV Column: $index : $label" }
-                        }
-                    }
-                }
-                lineNum++
-                nextLine = reader.readNext()
-            }
-
-            return ret
         } catch (ioe: IOException) {
             logger.error { "$ioe when loading series" }
         } finally {
@@ -201,10 +145,71 @@ class CSVSeries : Series {
 
             }
             IOUtils.closeQuietly(inputReader)
-            IOUtils.closeQuietly(`in`)
+            IOUtils.closeQuietly(inputStream)
         }
 
         return emptyList()
+    }
+
+    private fun getSeriesFromCSVLines(reader: CSVReader, headerLine: Array<String>, buildNumber: Int): ArrayList<PlotPoint> {
+
+        val series = ArrayList<PlotPoint>()
+
+        var lineNum = 0
+        var nextLine: Array<out String?> = reader.readNext()
+        while (nextLine.size > 1) {
+            // skip empty lines
+            if (nextLine.size == 1 && nextLine[0]!!.isEmpty()) {
+                continue
+            }
+
+            for (index in nextLine.indices) {
+                var label: String? = null
+
+                if (index > nextLine.size) {
+                    continue
+                }
+
+                val yValue = nextLine[index]!!
+
+                // empty value, caused by e.g. trailing comma in CSV
+                if (yValue.trim().isEmpty()) {
+                    continue
+                }
+
+                if (index < headerLine.size) {
+                    label = headerLine[index]
+                }
+
+                if (label == null || label.isEmpty()) {
+                    // if there isn't a label, use the index as the label
+                    label = "" + index
+                }
+
+                // LOGGER.finest("Loaded point: " + point);
+
+                addPoint(label, index, yValue, buildNumber, lineNum, series)
+            }
+            lineNum++
+            nextLine = reader.readNext()
+        }
+
+        return series
+    }
+
+    private fun addPoint(label: String, index: Int, yValue: String, buildNumber: Int, lineNum: Int, series: ArrayList<PlotPoint>) {
+        if (!excludePoint(label, index)) {
+            val pointUrl = getUrl(url, label, index, buildNumber)
+            val point = PlotPoint(yValue, pointUrl, label)
+            if (logger.isTraceEnabled) {
+                logger.trace { "CSV Point: [$index:$lineNum]$point" }
+            }
+            series.add(point)
+        } else {
+            if (logger.isTraceEnabled) {
+                logger.trace { "excluded CSV Column: $index : $label" }
+            }
+        }
     }
 
     /**
@@ -214,32 +219,31 @@ class CSVSeries : Series {
      * @return true if the point should be excluded based on label or column
      */
     private fun excludePoint(label: String, index: Int): Boolean {
-        if (inclusionFlag == null || inclusionFlag == InclusionFlag.OFF) {
+        if (inclusionFlag == null || inclusionFlag == OFF) {
             return false
         }
 
-        val retVal: Boolean
-        when (inclusionFlag) {
-            InclusionFlag.INCLUDE_BY_STRING ->
+        val isPointExcluded: Boolean = when (inclusionFlag) {
+            INCLUDE_BY_STRING ->
                 // if the set contains it, don't exclude it.
-                retVal = !strExclusionSet!!.contains(label)
-            InclusionFlag.EXCLUDE_BY_STRING ->
+                !strExclusionSet!!.contains(label)
+            EXCLUDE_BY_STRING ->
                 // if the set doesn't contain it, exclude it.
-                retVal = strExclusionSet!!.contains(label)
-            InclusionFlag.INCLUDE_BY_COLUMN ->
+                strExclusionSet!!.contains(label)
+            INCLUDE_BY_COLUMN ->
                 // if the set contains it, don't exclude it.
-                retVal = !colExclusionSet!!.contains(Integer.valueOf(index))
-            InclusionFlag.EXCLUDE_BY_COLUMN ->
+                !colExclusionSet!!.contains(Integer.valueOf(index))
+            EXCLUDE_BY_COLUMN ->
                 // if the set doesn't contain it, don't exclude it.
-                retVal = colExclusionSet!!.contains(Integer.valueOf(index))
-            else -> retVal = false
+                colExclusionSet!!.contains(Integer.valueOf(index))
+            else -> false
         }
 
         if (logger.isTraceEnabled) {
-            logger.trace { "${if (retVal) "excluded" else "included"} CSV Column: $index : $label" }
+            logger.trace { "${if (isPointExcluded) "excluded" else "included"} CSV Column: $index : $label" }
         }
 
-        return retVal
+        return isPointExcluded
     }
 
     /**
@@ -247,18 +251,18 @@ class CSVSeries : Series {
      * excluded.
      */
     private fun loadExclusionSet() {
-        if (inclusionFlag == InclusionFlag.OFF) {
+        if (inclusionFlag == OFF) {
             return
         }
 
         if (exclusionValues == null) {
-            inclusionFlag = InclusionFlag.OFF
+            inclusionFlag = OFF
             return
         }
 
         when (inclusionFlag) {
-            InclusionFlag.INCLUDE_BY_STRING, InclusionFlag.EXCLUDE_BY_STRING -> strExclusionSet = mutableSetOf()
-            InclusionFlag.INCLUDE_BY_COLUMN, InclusionFlag.EXCLUDE_BY_COLUMN -> colExclusionSet = mutableSetOf()
+            INCLUDE_BY_STRING, EXCLUDE_BY_STRING -> strExclusionSet = mutableSetOf()
+            INCLUDE_BY_COLUMN, EXCLUDE_BY_COLUMN -> colExclusionSet = mutableSetOf()
             else -> logger.error { "Failed to initialize columns exclusions set." }
         }
 
@@ -268,13 +272,13 @@ class CSVSeries : Series {
             }
 
             when (inclusionFlag) {
-                InclusionFlag.INCLUDE_BY_STRING, InclusionFlag.EXCLUDE_BY_STRING -> {
+                INCLUDE_BY_STRING, EXCLUDE_BY_STRING -> {
                     if (logger.isTraceEnabled) {
                         logger.trace { "${inclusionFlag.toString()} CSV Column: $str" }
                     }
                     strExclusionSet!!.add(str)
                 }
-                InclusionFlag.INCLUDE_BY_COLUMN, InclusionFlag.EXCLUDE_BY_COLUMN -> try {
+                INCLUDE_BY_COLUMN, EXCLUDE_BY_COLUMN -> try {
                     if (logger.isTraceEnabled) {
                         logger.trace { "${inclusionFlag.toString()} CSV Column: $str" }
                     }
