@@ -32,7 +32,7 @@ import java.util.regex.Pattern
  */
 
 enum class InclusionFlag {
-    OFF, INCLUDE_BY_STRING, EXCLUDE_BY_STRING, INCLUDE_BY_COLUMN, EXCLUDE_BY_COLUMN
+    OFF, INCLUDE_LABEL, EXCLUDE_LABEL, INCLUDE_COLUMN, EXCLUDE_COLUMN
 }
 
 private val logger = KotlinLogging.logger{}
@@ -43,12 +43,12 @@ class CSVSeries : Series {
     /**
      * Set for excluding values by column name
      */
-    private var strExclusionSet: MutableSet<String>? = null
+    private var excludedLabels: MutableSet<String>? = null
 
     /**
      * Set for excluding values by column #
      */
-    private var colExclusionSet: MutableSet<Int>? = null
+    private var excludedColumns: MutableSet<Int>? = null
 
     /**
      * Flag controlling how values are excluded.
@@ -58,7 +58,7 @@ class CSVSeries : Series {
     /**
      * Comma separated list of columns to exclude.
      */
-    var exclusionValues: String? = null
+    var labelsToExclude: String? = null
         private set
 
     /**
@@ -68,16 +68,21 @@ class CSVSeries : Series {
     val displayTableFlag: Boolean
 
 
-    @DataBoundConstructor constructor(file: String, url: String?, inclusionFlag: String?, exclusionValues: String?,
-                                      displayTableFlag: Boolean) : super(file, "", "csv") {
+    @DataBoundConstructor constructor(
+            file: String,
+            url: String?,
+            inclusionFlag: String?,
+            columnsToExclude: String?,
+            displayTableFlag: Boolean) : super(file, "", "csv") {
+
         this.url = url
         this.displayTableFlag = displayTableFlag
         this.inclusionFlag = OFF
-        if (exclusionValues == null) {
+        if (columnsToExclude == null) {
             this.inclusionFlag = OFF
         } else {
             this.inclusionFlag = valueOf(inclusionFlag!!)
-            this.exclusionValues = exclusionValues
+            this.labelsToExclude = columnsToExclude
             loadExclusionSet()
         }
     }
@@ -90,7 +95,9 @@ class CSVSeries : Series {
      * Load the series from a properties file.
      */
     override fun loadSeries(workspaceRootDir: FilePath,
-                            buildNumber: Int, printStream: PrintStream): List<PlotPoint> {
+                            buildNumber: Int,
+                            printStream: PrintStream): List<PlotPoint> {
+
         var reader: CSVReader? = null
         var inputStream: InputStream? = null
         var inputReader: InputStreamReader? = null
@@ -158,35 +165,21 @@ class CSVSeries : Series {
         var lineNum = 0
         var nextLine: Array<out String?> = reader.readNext()
         while (nextLine.size > 1) {
-            // skip empty lines
-            if (nextLine.size == 1 && nextLine[0]!!.isEmpty()) {
+            if (skipEmptyLines(nextLine)) {
                 continue
             }
 
             for (index in nextLine.indices) {
-                var label: String? = null
-
                 if (index > nextLine.size) {
                     continue
                 }
 
                 val yValue = nextLine[index]!!
-
-                // empty value, caused by e.g. trailing comma in CSV
                 if (yValue.trim().isEmpty()) {
                     continue
                 }
 
-                if (index < headerLine.size) {
-                    label = headerLine[index]
-                }
-
-                if (label == null || label.isEmpty()) {
-                    // if there isn't a label, use the index as the label
-                    label = "" + index
-                }
-
-                // LOGGER.finest("Loaded point: " + point);
+                val label: String = createLabel(index, headerLine)
 
                 addPoint(label, index, yValue, buildNumber, lineNum, series)
             }
@@ -195,6 +188,18 @@ class CSVSeries : Series {
         }
 
         return series
+    }
+
+    private fun skipEmptyLines(nextLine: Array<out String?>) = nextLine.size == 1 && nextLine[0]!!.isEmpty()
+
+    private fun createLabel(index: Int, headerLine: Array<String>): String {
+        if (index < headerLine.size) {
+            if (headerLine[index].isEmpty()) {
+                return "" + index
+            }
+        }
+
+        return ""
     }
 
     private fun addPoint(label: String, index: Int, yValue: String, buildNumber: Int, lineNum: Int, series: ArrayList<PlotPoint>) {
@@ -224,18 +229,10 @@ class CSVSeries : Series {
         }
 
         val isPointExcluded: Boolean = when (inclusionFlag) {
-            INCLUDE_BY_STRING ->
-                // if the set contains it, don't exclude it.
-                !strExclusionSet!!.contains(label)
-            EXCLUDE_BY_STRING ->
-                // if the set doesn't contain it, exclude it.
-                strExclusionSet!!.contains(label)
-            INCLUDE_BY_COLUMN ->
-                // if the set contains it, don't exclude it.
-                !colExclusionSet!!.contains(Integer.valueOf(index))
-            EXCLUDE_BY_COLUMN ->
-                // if the set doesn't contain it, don't exclude it.
-                colExclusionSet!!.contains(Integer.valueOf(index))
+            INCLUDE_LABEL -> !excludedLabels!!.contains(label)
+            EXCLUDE_LABEL -> excludedLabels!!.contains(label)
+            INCLUDE_COLUMN -> !excludedColumns!!.contains(Integer.valueOf(index))
+            EXCLUDE_COLUMN -> excludedColumns!!.contains(Integer.valueOf(index))
             else -> false
         }
 
@@ -255,41 +252,48 @@ class CSVSeries : Series {
             return
         }
 
-        if (exclusionValues == null) {
+        if (labelsToExclude == null) {
             inclusionFlag = OFF
             return
         }
 
         when (inclusionFlag) {
-            INCLUDE_BY_STRING, EXCLUDE_BY_STRING -> strExclusionSet = mutableSetOf()
-            INCLUDE_BY_COLUMN, EXCLUDE_BY_COLUMN -> colExclusionSet = mutableSetOf()
+            INCLUDE_LABEL, EXCLUDE_LABEL -> excludedLabels = mutableSetOf()
+            INCLUDE_COLUMN, EXCLUDE_COLUMN -> excludedColumns = mutableSetOf()
             else -> logger.error { "Failed to initialize columns exclusions set." }
         }
 
-        for (str in PATTERN_COMMA.split(exclusionValues)) {
-            if (str == null || str.length <= 0) {
+        for (labelToExclude in PATTERN_COMMA.split(labelsToExclude)) {
+            if (labelToExclude == null || labelToExclude.length <= 0) {
                 continue
             }
 
             when (inclusionFlag) {
-                INCLUDE_BY_STRING, EXCLUDE_BY_STRING -> {
-                    if (logger.isTraceEnabled) {
-                        logger.trace { "${inclusionFlag.toString()} CSV Column: $str" }
-                    }
-                    strExclusionSet!!.add(str)
-                }
-                INCLUDE_BY_COLUMN, EXCLUDE_BY_COLUMN -> try {
-                    if (logger.isTraceEnabled) {
-                        logger.trace { "${inclusionFlag.toString()} CSV Column: $str" }
-                    }
-                    colExclusionSet!!.add(Integer.valueOf(str))
-                } catch (nfe: NumberFormatException) {
-                    logger.error { "$nfe when converting to interger" }
-                }
+                INCLUDE_LABEL, EXCLUDE_LABEL -> addExcludedLabel(labelToExclude)
+
+                INCLUDE_COLUMN, EXCLUDE_COLUMN -> addExcludedColumn(labelToExclude)
 
                 else -> logger.error { "Failed to identify columns exclusions." }
             }
         }
+    }
+
+    private fun addExcludedColumn(column: String?) {
+        try {
+            if (logger.isTraceEnabled) {
+                logger.trace { "${inclusionFlag.toString()} CSV Column: $column" }
+            }
+            excludedColumns!!.add(Integer.valueOf(column))
+        } catch (nfe: NumberFormatException) {
+            logger.error { "$nfe when converting to integer" }
+        }
+    }
+
+    private fun addExcludedLabel(label: String) {
+        if (logger.isTraceEnabled) {
+            logger.trace { "${inclusionFlag.toString()} CSV Column: $label" }
+        }
+        excludedLabels!!.add(label)
     }
 
     override fun getDescriptor(): Descriptor<Series> {
