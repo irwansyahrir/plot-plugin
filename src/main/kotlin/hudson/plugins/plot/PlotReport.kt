@@ -3,6 +3,7 @@ package hudson.plugins.plot
 import au.com.bytecode.opencsv.CSVReader
 import hudson.model.AbstractProject
 import hudson.model.Job
+import mu.KotlinLogging
 import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang.StringUtils
 import org.kohsuke.stapler.StaplerRequest
@@ -13,21 +14,10 @@ import java.io.IOException
 import java.io.InputStreamReader
 import java.nio.charset.Charset
 import java.util.*
-import java.util.logging.Level
-import java.util.logging.Logger
 
-class PlotReport(// called from PlotReport/index.jelly
-        val job: Job<*, *>,
-        /**
-         * The group these plots belong to.
-         */
-        // called from PlotReport/index.jelly
-        val group: String,
-        /**
-         * The sorted list of plots that belong to the same group.
-         */
-        // called from PlotReport/index.jelly
-        val plots: List<Plot>) {
+private val logger = KotlinLogging.logger{}
+
+class PlotReport(val job: Job<*, *>, val group: String, val plots: List<Plot>) {
 
     val project: AbstractProject<*, *>?
         @Deprecated("")
@@ -48,7 +38,7 @@ class PlotReport(// called from PlotReport/index.jelly
         try {
             plot!!.plotGraph(req, rsp)
         } catch (ioe: IOException) {
-            LOGGER.log(Level.SEVERE, "Exception plotting graph", ioe)
+            logger.error { "Exception plotting graph : $ioe" }
         }
 
     }
@@ -60,7 +50,7 @@ class PlotReport(// called from PlotReport/index.jelly
         try {
             plot!!.plotGraphMap(req, rsp)
         } catch (ioe: IOException) {
-            LOGGER.log(Level.SEVERE, "Exception plotting graph", ioe)
+            logger.error { "Exception plotting graph: $ioe" }
         }
 
     }
@@ -77,28 +67,31 @@ class PlotReport(// called from PlotReport/index.jelly
     }
 
     // called from PlotReport/index.jelly
-    fun getTable(i: Int): List<List<String>> {
-        val tableData = ArrayList<List<String>>()
+    fun getTable(index: Int): List<List<String>> {
+        val tableData = ArrayList<MutableList<String>>()
 
-        val plot = getPlot(i)
+        val plot = getPlot(index)
 
         // load existing csv file
         val plotFile = File(job.getRootDir(), plot.getCsvFileName())
         if (!plotFile.exists()) {
-            return tableData
+            return emptyList() //TODO: is this ok?
         }
+
         var reader: CSVReader? = null
         try {
-            reader = CSVReader(InputStreamReader(FileInputStream(plotFile),
-                    Charset.defaultCharset().name()))
+            reader = CSVReader(InputStreamReader(FileInputStream(plotFile), Charset.defaultCharset().name()))
+
             // throw away 2 header lines
             reader.readNext()
             reader.readNext()
+
             // array containing header titles
             val header = ArrayList<String>()
             header.add(Messages.Plot_Build() + " #")
             tableData.add(header)
-            var nextLine: Array<out String?> = reader.readNext()
+
+            var nextLine: Array<out String?>? = reader.readNext()
             while (nextLine != null) {
                 val buildNumber = nextLine[2]
                 if (!plot.reportBuild(Integer.parseInt(buildNumber))) {
@@ -148,13 +141,13 @@ class PlotReport(// called from PlotReport/index.jelly
                 }
             }
         } catch (ioe: IOException) {
-            LOGGER.log(Level.SEVERE, "Exception reading csv file", ioe)
+            logger.error { "Exception reading csv file: $ioe" }
         } finally {
             if (reader != null) {
                 try {
                     reader.close()
                 } catch (e: IOException) {
-                    LOGGER.log(Level.INFO, "Failed to close CSV reader", e)
+                    logger.info { "Failed to close CSV reader: $e" }
                 }
 
             }
@@ -163,22 +156,19 @@ class PlotReport(// called from PlotReport/index.jelly
     }
 
     private fun getPlot(i: Int): Plot {
-        val p = plots[i]
-        p.job = job
-        return p
+        val plot = plots[i]
+        plot.job = job
+        return plot
     }
 
     private fun getPlot(i: String): Plot? {
-        try {
-            return getPlot(Integer.parseInt(i))
+        return try {
+            getPlot(Integer.parseInt(i))
         } catch (ignore: NumberFormatException) {
-            LOGGER.log(Level.SEVERE, "Exception converting to integer", ignore)
-            return null
+            logger.error { "Exception converting to integer $ignore" }
+            null
         }
 
     }
 
-    companion object {
-        private val LOGGER = Logger.getLogger(PlotReport::class.java.name)
-    }
 }

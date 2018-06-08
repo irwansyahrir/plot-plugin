@@ -210,10 +210,10 @@ class KtPlotTest {
 
     @Throws(Exception::class)
     private fun assertSampleCount(project: AbstractProject<*, *>?, count: Int) {
-        val plotReport = if (project is MatrixConfiguration)
-            project.getAction(MatrixPlotAction::class.java).getDynamic("default")
-        else
-            project!!.getAction(PlotAction::class.java).getDynamic("default", null, null)
+        val plotReport = when (project) {
+            is MatrixConfiguration -> project.getAction(MatrixPlotAction::class.java).getDynamic("default")
+            else -> project!!.getAction(PlotAction::class.java).getDynamic("default", null, null)
+        }
         val table = plotReport.getTable(0)
         assertEquals("Plot sample count", count.toLong(), (table.size - 1).toLong())
     }

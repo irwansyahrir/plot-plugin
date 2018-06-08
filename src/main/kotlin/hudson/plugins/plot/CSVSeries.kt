@@ -163,7 +163,7 @@ class CSVSeries : Series {
         val series = ArrayList<PlotPoint>()
 
         var lineNum = 0
-//        var nextLine: Array<out String?> = reader.readNext()
+        var nextLine: Array<out String?> = reader.readNext()
         while (nextLine.size > 1) {
             if (skipEmptyLines(nextLine)) {
                 continue
