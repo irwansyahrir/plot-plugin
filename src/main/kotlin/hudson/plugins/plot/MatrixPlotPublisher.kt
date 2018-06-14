@@ -134,7 +134,7 @@ class MatrixPlotPublisher : AbstractPlotPublisher() {
      */
     override fun getProjectAction(project: AbstractProject<*, *>?): Action? {
         return when (project) {
-            is MatrixConfiguration -> MatrixPlotAction(project as MatrixConfiguration?, this)
+            is MatrixConfiguration -> MatrixPlotAction(project, this)
             else -> null
         }
     }
