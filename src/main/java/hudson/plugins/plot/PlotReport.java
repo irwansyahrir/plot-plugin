@@ -41,13 +41,11 @@ public class PlotReport {
      */
     private String group;
 
-    public PlotReport(AbstractProject<?, ?> project, String group,
-                      List<Plot> plots) {
+    public PlotReport(AbstractProject<?, ?> project, String group, List<Plot> plots) {
         this((Job) project, group, plots);
     }
 
-    public PlotReport(Job<?, ?> job, String group,
-                      List<Plot> plots) {
+    public PlotReport(Job<?, ?> job, String group, List<Plot> plots) {
         Collections.sort(plots);
         this.plots = plots;
         this.group = group;
@@ -59,22 +57,18 @@ public class PlotReport {
         return project instanceof AbstractProject ? (AbstractProject<?, ?>) project : null;
     }
 
-    // called from PlotReport/index.jelly
     public Job<?, ?> getJob() {
         return project;
     }
 
-    // called from PlotReport/index.jelly
     public String getGroup() {
         return group;
     }
 
-    // called from PlotReport/index.jelly
     public List<Plot> getPlots() {
         return plots;
     }
 
-    // called from PlotReport/index.jelly
     public void doGetPlot(StaplerRequest req, StaplerResponse rsp) {
         String i = req.getParameter("index");
         Plot plot = getPlot(i);
@@ -85,7 +79,6 @@ public class PlotReport {
         }
     }
 
-    // called from PlotReport/index.jelly
     public void doGetPlotMap(StaplerRequest req, StaplerResponse rsp) {
         String i = req.getParameter("index");
         Plot plot = getPlot(i);
@@ -96,7 +89,6 @@ public class PlotReport {
         }
     }
 
-    // called from PlotReport/index.jelly
     public boolean getDisplayTableFlag(int i) {
         Plot plot = getPlot(i);
 
@@ -107,7 +99,6 @@ public class PlotReport {
         return false;
     }
 
-    // called from PlotReport/index.jelly
     public List<List<String>> getTable(int i) {
         List<List<String>> tableData = new ArrayList<>();
 
@@ -118,13 +109,14 @@ public class PlotReport {
         if (!plotFile.exists()) {
             return tableData;
         }
+
         CSVReader reader = null;
         try {
             reader = new CSVReader(new InputStreamReader(new FileInputStream(plotFile),
                     Charset.defaultCharset().name()));
-            // throw away 2 header lines
-            reader.readNext();
-            reader.readNext();
+
+            throwAwayTwoHeaderLines(reader);
+
             // array containing header titles
             List<String> header = new ArrayList<>();
             header.add(Messages.Plot_Build() + " #");
@@ -139,9 +131,7 @@ public class PlotReport {
                 // index of the column where the value should be located
                 int index = header.lastIndexOf(seriesLabel);
                 if (index <= 0) {
-                    // add header label
-                    index = header.size();
-                    header.add(seriesLabel);
+                    index = addHeaderLabel(header, seriesLabel);
                 }
                 List<String> tableRow = null;
                 for (int j = 1; j < tableData.size(); j++) {
@@ -190,15 +180,28 @@ public class PlotReport {
         return tableData;
     }
 
-    private Plot getPlot(int i) {
-        Plot p = plots.get(i);
-        p.setJob(project);
-        return p;
+    private int addHeaderLabel(List<String> header, String seriesLabel) {
+        int index;
+        index = header.size();
+        header.add(seriesLabel);
+        return index;
     }
 
-    private Plot getPlot(String i) {
+    private void throwAwayTwoHeaderLines(CSVReader reader) throws IOException {
+        reader.readNext();
+        reader.readNext();
+    }
+
+    private Plot getPlot(int index) {
+        Plot plot = plots.get(index);
+        plot.setJob(project);
+
+        return plot;
+    }
+
+    private Plot getPlot(String index) {
         try {
-            return getPlot(Integer.parseInt(i));
+            return getPlot(Integer.parseInt(index));
         } catch (NumberFormatException ignore) {
             LOGGER.log(Level.SEVERE, "Exception converting to integer", ignore);
             return null;
