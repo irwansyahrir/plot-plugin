@@ -48,7 +48,7 @@ class KtXMLSeriesTest : KtSeriesTestCase() {
 
         val labelValueMap = HashMap<String, Double>()
         for (point in points) {
-            labelValueMap[point.label] = java.lang.Double.parseDouble(point.yvalue)
+            labelValueMap[point.label!!] = java.lang.Double.parseDouble(point.yvalue)
         }
 
         assertThat(labelValueMap["AxTermDataService.updateItem"]).isEqualTo(7.0)

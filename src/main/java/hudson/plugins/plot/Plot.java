@@ -984,7 +984,7 @@ public class Plot implements Comparable<Plot> {
     /**
      * @return true if the build should be part of the graph.
      */
-    /* package */boolean reportBuild(int buildNumber) {
+    boolean reportBuild(int buildNumber) {
         int buildsNumber;
         try {
             buildsNumber = Integer.parseInt(this.numBuilds);
