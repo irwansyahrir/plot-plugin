@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.NumberFormat;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -69,6 +70,24 @@ public class PlotReport {
         return plots;
     }
 
+    // called from PlotReport/index.jelly
+    public String formatNumber(String number) {
+        String formatted;
+
+        try {
+            formatted = NumberFormat.getIntegerInstance().format(Integer.parseInt(number));
+        } catch (NumberFormatException e) {
+            try {
+                formatted = NumberFormat.getNumberInstance().format(Double.parseDouble(number));
+            } catch (NumberFormatException e2) {
+                return number;
+            }
+        }
+
+        return formatted;
+    }
+
+    // called from PlotReport/index.jelly
     public void doGetPlot(StaplerRequest req, StaplerResponse rsp) {
         String i = req.getParameter("index");
         Plot plot = getPlot(i);
