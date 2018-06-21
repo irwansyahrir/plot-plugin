@@ -88,7 +88,7 @@ class MatrixPlotPublisher : AbstractPlotPublisher() {
      * @param plot the new plot
      */
     fun addPlot(plot: Plot) {
-        val urlGroup = originalGroupToUrlEncodedGroup(plot.getGroup())
+        val urlGroup = convertToUrlEncodedGroup(plot.getGroup())
 
         when {
             groupMap.containsKey(urlGroup) -> {

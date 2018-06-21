@@ -99,7 +99,7 @@ class PlotPublisher : AbstractPlotPublisher() {
         // update the plot list
         plots.add(plot)
         // update the group-to-plot map
-        val urlGroup = originalGroupToUrlEncodedGroup(plot.getGroup())
+        val urlGroup = convertToUrlEncodedGroup(plot.getGroup())
         if (groupMap.containsKey(urlGroup)) {
             val list = groupMap[urlGroup]
             list!!.add(plot)

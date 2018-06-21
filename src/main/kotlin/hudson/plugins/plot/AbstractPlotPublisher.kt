@@ -13,7 +13,7 @@ open class AbstractPlotPublisher : Recorder() {
     /**
      * Converts the original plot group name to a URL friendly group name.
      */
-    fun originalGroupToUrlEncodedGroup(originalGroup: String): String {
+    fun convertToUrlEncodedGroup(originalGroup: String): String {
         return Util.rawEncode(originalGroupToUrlGroup(originalGroup))
     }
 

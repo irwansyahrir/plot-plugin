@@ -40,30 +40,13 @@ private val PATTERN_COMMA = Pattern.compile(",")
 
 class CSVSeries : Series {
 
-    /**
-     * Set for excluding values by column name
-     */
     private var excludedLabels: MutableSet<String>? = null
-
-    /**
-     * Set for excluding values by column #
-     */
     private var excludedColumns: MutableSet<Int>? = null
-
-    /**
-     * Flag controlling how values are excluded.
-     */
     private var inclusionFlag: InclusionFlag?
 
-    /**
-     * Comma separated list of columns to exclude.
-     */
     var labelsToExclude: String? = null
         private set
 
-    /**
-     * Url to use as a base for mapping points.
-     */
     val url: String?
     val displayTableFlag: Boolean
 
@@ -143,19 +126,23 @@ class CSVSeries : Series {
         } catch (ioe: IOException) {
             logger.error { "$ioe when loading series" }
         } finally {
-            if (reader != null) {
-                try {
-                    reader.close()
-                } catch (e: IOException) {
-                    logger.error { "$e failed to close series reader" }
-                }
-
-            }
-            IOUtils.closeQuietly(inputReader)
-            IOUtils.closeQuietly(inputStream)
+            closeAllStreams(reader, inputReader, inputStream)
         }
 
         return emptyList()
+    }
+
+    private fun closeAllStreams(reader: CSVReader?, inputReader: InputStreamReader?, inputStream: InputStream?) {
+        if (reader != null) {
+            try {
+                reader.close()
+            } catch (e: IOException) {
+                logger.error { "$e failed to close series reader" }
+            }
+
+        }
+        IOUtils.closeQuietly(inputReader)
+        IOUtils.closeQuietly(inputStream)
     }
 
     private fun getSeriesFromCSVLines(reader: CSVReader, headerLine: Array<String>, buildNumber: Int): ArrayList<PlotPoint> {

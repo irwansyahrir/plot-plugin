@@ -25,7 +25,7 @@ class MatrixPlotAction(private val project: MatrixConfiguration, private val pub
     }
 
     fun getUrlGroup(originalGroup: String): String {
-        return publisher.originalGroupToUrlEncodedGroup(originalGroup)
+        return publisher.convertToUrlEncodedGroup(originalGroup)
     }
 
     @Throws(IOException::class)

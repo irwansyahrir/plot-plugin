@@ -74,7 +74,7 @@ public class PlotAction implements Action, StaplerProxy {
 
     // called from PlotAction/index.jelly
     public String getUrlGroup(String originalGroup) {
-        return publisher.originalGroupToUrlEncodedGroup(originalGroup);
+        return publisher.convertToUrlEncodedGroup(originalGroup);
     }
 
     // called from href created in PlotAction/index.jelly
