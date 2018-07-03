@@ -85,7 +85,7 @@ class PropertiesSeries : Series {
         }
 
         @Throws(Descriptor.FormException::class)
-        override fun newInstance(req: StaplerRequest, formData: JSONObject): Series? {
+        override fun newInstance(req: StaplerRequest?, formData: JSONObject): Series? {
             return SeriesFactory.createSeries(formData, req)
         }
     }

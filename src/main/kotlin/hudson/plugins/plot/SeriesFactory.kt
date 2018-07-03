@@ -23,7 +23,7 @@ object SeriesFactory {
      *
      * @param formData JSON data for series
      */
-    fun createSeries(formData: JSONObject, req: StaplerRequest): Series? {
+    fun createSeries(formData: JSONObject, req: StaplerRequest?): Series? {
         var formData = formData
         val file = formData.getString("file")
         formData = formData.getJSONObject("fileType")
@@ -37,10 +37,10 @@ object SeriesFactory {
             "xml" -> typeClass = XMLSeries::class.java
         }
 
-        return if (typeClass != null) req.bindJSON(typeClass, formData) else null
+        return if (typeClass != null) req!!.bindJSON(typeClass, formData) else null
     }
 
-    fun createSeriesList(data: Any, req: StaplerRequest): List<Series> {
+    fun createSeriesList(data: Any, req: StaplerRequest?): List<Series> {
         val list = getArray(data)
         val result = mutableListOf<Series>()
         for (series in list) {
