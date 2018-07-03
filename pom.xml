@@ -13,7 +13,7 @@
     <!-- Baseline Jenkins version you use to build the plugin. Users must have this version or newer to run. -->
     <jenkins.version>2.0</jenkins.version>
     <!-- Java Level to use. Java 7 required when using core >= 1.612 -->
-    <java.level>7</java.level>
+    <java.level>8</java.level>
       <kotlin.version>1.2.50</kotlin.version>
   </properties>
 
@@ -112,6 +112,12 @@
       <classifier>tests</classifier>
       <scope>test</scope>
     </dependency>
+
+      <dependency>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+          <version>1.7.25</version>
+      </dependency>
 
       <dependency>
           <groupId>org.jetbrains.kotlin</groupId>
